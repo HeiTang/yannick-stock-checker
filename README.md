@@ -20,14 +20,18 @@
 ## 🏗️ 架構
 
 ```
-使用者 → FastAPI API → TTLCache → Aggregator → Scraper → 亞尼克官方 API
-                                      ↓
-                              反向索引（商品 → 站點）
+使用者（瀏覽器）
+      ↓
+Astro 靜態前端（web/）
+      ↓ fetch /api/*
+FastAPI API → TTLCache → Aggregator → Scraper → 亞尼克官方 API
+                                          ↓
+                                  反向索引（商品 → 站點）
 ```
 
 ## 🚀 快速開始
 
-### 1. 建立虛擬環境
+### 1. 後端：建立 Python 虛擬環境
 
 ```bash
 python3 -m venv .venv
@@ -35,24 +39,38 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. 設定環境變數
+### 2. 前端：安裝依賴並建置
+
+> 需要 Node.js ≥ 22.12.0
+
+```bash
+cd web
+npm install
+npm run build   # 輸出至 web/dist/，供 FastAPI 一併提供服務
+cd ..
+```
+
+### 3. 設定環境變數（可選）
 
 ```bash
 cp .env.example .env
-# 編輯 .env 填入必要的設定
+# 視需要調整設定，預設值即可正常運行
 ```
 
-### 3. 啟動 API Server
+### 4. 啟動服務
 
 ```bash
 uvicorn app.main:app --reload --port 8080
 ```
 
-啟動後會自動從亞尼克官方抓取資料（約需 30 秒完成全站掃描）。
+啟動後會自動掃描全台站點庫存（約需 30 秒完成）。前端介面與後端 API 均由此服務統一提供。
 
-### 4. 查看 API 文檔
+### 5. 開始使用
 
-打開瀏覽器前往：http://localhost:8080/docs
+| 服務 | 網址 |
+|------|------|
+| 🌐 Web 查詢介面 | http://localhost:8080 |
+| 📖 API 互動文檔 | http://localhost:8080/docs |
 
 ## 📡 API Endpoints
 
@@ -106,6 +124,20 @@ uvicorn app.main:app --reload --port 8080
   "total_quantity": 55
 }
 ```
+
+## 🌐 Web 前端
+
+前端使用 [Astro](https://astro.build/) 框架建置為靜態網站，部署後由 FastAPI 一併提供服務。
+
+### 建置前端
+
+```bash
+cd web
+npm install
+npm run build   # 輸出至 web/dist/
+```
+
+FastAPI 啟動時會自動掛載 `web/dist/` 作為靜態資源；修改前端後重新執行 `npm run build` 即可，無需重啟後端。
 
 ## 🧪 測試
 
