@@ -116,30 +116,6 @@ python -m pytest tests/ -v
 
 共 18 個測試（scraper × 5 + aggregator × 5 + api × 8），使用 `respx` mock HTTP 請求。
 
-## 📁 專案結構
-
-```
-yannick-stock-checker/
-├── app/
-│   ├── config.py              # 環境變數設定（pydantic-settings）
-│   ├── main.py                # FastAPI 進入點 + lifespan 管理
-│   ├── core/
-│   │   ├── models.py          # 資料模型（Station, Product, etc.）
-│   │   ├── scraper.py         # 爬蟲：站點清單 + 庫存 API
-│   │   ├── aggregator.py      # 聚合器：反向索引建構
-│   │   └── cache.py           # TTL 記憶體快取
-│   ├── api/
-│   │   └── routes.py          # RESTful API 路由 + Pydantic models
-│   └── web/                   # Web 前端（Phase 3）
-├── tests/
-│   ├── test_scraper.py
-│   ├── test_aggregator.py
-│   └── test_api.py
-├── .env.example
-├── requirements.txt
-└── pytest.ini
-```
-
 ## ⚙️ 環境變數
 
 | 變數 | 預設值 | 說明 |
@@ -153,22 +129,6 @@ yannick-stock-checker/
 | `RETRY_MAX_BACKOFF` | `8.0` | 退避時間上限（秒） |
 | `PORT` | `8080` | Server 監聽埠 |
 | `WEBHOOK_URL` | - | Cloud Run Webhook URL（Phase 5） |
-
-### 🔁 重試策略
-
-採用 [Google Cloud 推薦的指數退避演算法](https://docs.cloud.google.com/iam/docs/retry-strategy?hl=zh-tw)（Exponential Backoff + Full Jitter）：
-
-```
-wait = random(0, min(max_backoff, initial_backoff × 2^attempt))
-```
-
-**觸發條件**：
-- `TimeoutException`（ReadTimeout, ConnectTimeout）
-- `ConnectError`（連線失敗）
-- HTTP 5xx Server Error
-
-**預設行為**：最多重試 3 次，退避 1s → 2s → 4s（加隨機 jitter），上限 8s。  
-**實測改善**：成功率從 56/66 站 → 63/66 站 ↑
 
 ## 🗺️ Roadmap
 
