@@ -25,10 +25,6 @@ class Settings(BaseSettings):
     # ── Database ─────────────────────────────────────────────
     db_path: str = "data/yannick_stock.db"
 
-    # ── Telegram Bot ─────────────────────────────────────────
-    telegram_bot_token: str = ""
-    webhook_url: str = ""
-
     # ── Server ───────────────────────────────────────────────
     host: str = "0.0.0.0"
     port: int = 8080

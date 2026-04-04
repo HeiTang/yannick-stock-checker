@@ -39,7 +39,7 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# 編輯 .env 填入必要的設定（Phase 1 & 2 不需要 Telegram Token）
+# 編輯 .env 填入必要的設定
 ```
 
 ### 3. 啟動 API Server
@@ -130,7 +130,6 @@ yannick-stock-checker/
 │   │   └── cache.py           # TTL 記憶體快取
 │   ├── api/
 │   │   └── routes.py          # RESTful API 路由 + Pydantic models
-│   ├── bot/                   # Telegram Bot（Phase 4）
 │   └── web/                   # Web 前端（Phase 3）
 ├── tests/
 │   ├── test_scraper.py
@@ -153,7 +152,6 @@ yannick-stock-checker/
 | `RETRY_INITIAL_BACKOFF` | `1.0` | 初始退避時間（秒） |
 | `RETRY_MAX_BACKOFF` | `8.0` | 退避時間上限（秒） |
 | `PORT` | `8080` | Server 監聽埠 |
-| `TELEGRAM_BOT_TOKEN` | - | Telegram Bot Token（Phase 4） |
 | `WEBHOOK_URL` | - | Cloud Run Webhook URL（Phase 5） |
 
 ### 🔁 重試策略
@@ -177,7 +175,6 @@ wait = random(0, min(max_backoff, initial_backoff × 2^attempt))
 - [x] **Phase 1**：核心引擎（Scraper + Aggregator + Cache）
 - [x] **Phase 2**：API 服務（FastAPI + RESTful Endpoints）
 - [x] **Phase 3**：Web 前端（HTML/JS/CSS 查詢介面 + 響應式 Modal）
-- [ ] ~~**Phase 4**：Telegram Bot（InlineKeyboard 互動查詢）~~ *(目前暫停：認為網頁版已滿足需求)*
 - [ ] **Phase 5**：部署（Docker + Cloud Run + CI/CD）
 
 ## ⚠️ 注意事項
