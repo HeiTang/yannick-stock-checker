@@ -1,0 +1,68 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import StatsBar from '../components/StatsBar.astro';
+import SearchBar from '../components/SearchBar.astro';
+import ProductGrid from '../components/ProductGrid.astro';
+import ProductCard from '../components/ProductCard.astro';
+import StationModal from '../components/StationModal.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout title="亞尼克 YTM 庫存查詢">
+  <Header />
+  
+  <main class="container">
+    <StatsBar />
+    <SearchBar />
+    <div id="global-filter-container"></div>
+    <ProductGrid />
+  </main>
+  
+  <Footer />
+  
+  <!-- Template included for client-side rendering -->
+  <ProductCard />
+  
+  <StationModal />
+  
+  <script>
+    import { initApp } from '../scripts/app.ts';
+    
+    // Global error listener for debugging
+    window.addEventListener('error', (e) => {
+      const errDiv = document.createElement('div');
+      errDiv.style.position = 'fixed';
+      errDiv.style.zIndex = '9999';
+      errDiv.style.background = 'rgba(255,0,0,0.8)';
+      errDiv.style.color = 'white';
+      errDiv.style.top = '0';
+      errDiv.style.left = '0';
+      errDiv.style.padding = '10px';
+      errDiv.style.whiteSpace = 'pre-wrap';
+      errDiv.style.fontSize = '12px';
+      errDiv.textContent = `Error: ${e.error?.message}\n${e.error?.stack}`;
+      document.body.appendChild(errDiv);
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+      const errDiv = document.createElement('div');
+      errDiv.style.position = 'fixed';
+      errDiv.style.zIndex = '9999';
+      errDiv.style.background = 'rgba(200,0,0,0.8)';
+      errDiv.style.color = 'white';
+      errDiv.style.top = '50px';
+      errDiv.style.left = '0';
+      errDiv.style.padding = '10px';
+      errDiv.style.whiteSpace = 'pre-wrap';
+      errDiv.style.fontSize = '12px';
+      errDiv.textContent = `Promise Reject: ${e.reason?.message}\n${e.reason?.stack}`;
+      document.body.appendChild(errDiv);
+    });
+
+    // Initialize the app when the DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      initApp();
+    });
+  </script>
+</Layout>

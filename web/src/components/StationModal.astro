@@ -1,0 +1,262 @@
+---
+---
+
+<div id="station-modal" class="modal-overlay hidden">
+  <div class="modal-dialog glass-panel">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2 class="modal-title">站點庫存</h2>
+      <button class="modal-close" aria-label="Close modal">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    
+    
+    <div id="modal-filter-container" class="modal-filter-wrapper">
+      <!-- JS will inject FilterTabs here if needed -->
+    </div>
+
+    <div class="modal-body">
+      <div id="modal-stations-list" class="stations-list">
+        <!-- Content gets injected here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Template for Filter Tabs (Used both globally and inside modal) -->
+<template id="filter-tabs-template">
+  <div class="filter-tabs hide-scrollbar">
+    <button class="filter-pill active" data-filter="all">全部</button>
+    <!-- Dynamic pills injected here -->
+  </div>
+</template>
+
+<style>
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh; /* important for mobile iOS */
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-bounce);
+  }
+  
+  .modal-overlay:not(.hidden) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  
+  .modal-dialog {
+    width: 100%;
+    max-width: 500px;
+    height: 70vh;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    /* initial state for animation */
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+    transition: transform var(--transition-bounce), opacity var(--transition-bounce);
+  }
+  
+  .modal-overlay:not(.hidden) .modal-dialog {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  
+  .modal-handle {
+    display: none; /* Only show on mobile */
+  }
+
+  .modal-header {
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  
+  .modal-close {
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    color: var(--color-text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+  }
+  
+  .modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-text-primary);
+  }
+  
+  .modal-body {
+    padding: 0 1.5rem 1.5rem 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+  }
+  
+  .modal-filter-wrapper {
+    padding: 1.5rem 1.5rem 0 1.5rem;
+    flex-shrink: 0;
+  }
+  
+  /* Loading state inside modal */
+  .stations-loading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .loading-row {
+    height: 1.5rem;
+    width: 100%;
+    background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+    border-radius: 4px;
+  }
+  
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Inside stations-list when populated */
+  :global(.line-group) {
+    padding: 0 0 1rem 0;
+  }
+  
+  :global(.line-name) {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  
+  :global(.line-group:first-child .line-name) {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  :global(.station-item) {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    font-size: 0.875rem;
+  }
+  
+  :global(.station-name) {
+    color: var(--color-text-primary);
+  }
+  
+  :global(.station-stock) {
+    color: var(--color-brand);
+    font-weight: 600;
+  }
+
+  /* Mobile Bottom Sheet */
+  @media (max-width: 768px) {
+    .modal-overlay {
+      align-items: flex-end; /* Align bottom */
+    }
+    
+    .modal-dialog {
+      max-width: 100%;
+      width: 100vw;
+      height: 85vh; /* Fixed height for Bottom Sheet to prevent jumping when content shrinks */
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+      margin: 0;
+      /* Bottom sheet entry animation */
+      transform: translateY(100%);
+    }
+    
+    .modal-overlay:not(.hidden) .modal-dialog {
+      transform: translateY(0);
+    }
+    
+    .modal-handle {
+      display: block;
+      width: 40px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      margin: 12px auto 0;
+    }
+    
+    .modal-header {
+      padding-top: 1rem; /* compressed top padding due to handle */
+    }
+  }
+</style>
+
+<style is:global>
+  /* Global filter pill styles since they are injected via JS */
+  .filter-tabs {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.75rem;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+    -webkit-overflow-scrolling: touch; /* smooth scrolling */
+  }
+  .filter-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .filter-pill {
+    white-space: nowrap;
+    padding: 0.4rem 1rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+  .filter-pill:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-text-primary);
+  }
+  .filter-pill.active {
+    background: rgba(200, 16, 46, 0.2);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    font-weight: 500;
+  }
+</style>

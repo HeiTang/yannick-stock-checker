@@ -1,0 +1,41 @@
+---
+---
+
+<div class="product-grid" id="product-grid">
+  <!-- Skeletons will be shown initially -->
+  {Array.from({ length: 6 }).map(() => (
+    <div class="skeleton-card glass-panel">
+      <div class="skeleton loading-row mb-2"></div>
+      <div class="skeleton loading-row short"></div>
+    </div>
+  ))}
+</div>
+
+<style>
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    min-height: 400px; /* Prevent layout shift */
+  }
+
+  /* Initial Loading State */
+  .skeleton-card {
+    padding: 1.5rem;
+    height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .loading-row {
+    height: 1.25rem;
+    width: 80%;
+    margin-bottom: 0.75rem;
+  }
+  
+  .loading-row.short {
+    width: 40%;
+    margin-bottom: 0;
+  }
+</style>

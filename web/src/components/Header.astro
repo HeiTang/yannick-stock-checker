@@ -1,0 +1,86 @@
+---
+---
+
+<header class="header glass-panel">
+  <div class="container header-content">
+    <div class="logo">
+      <span class="icon">🍰</span>
+      <h1>亞尼克 YTM 庫存查詢</h1>
+    </div>
+    <div class="header-actions">
+      <div class="last-updated">
+        <small>最後更新：<span id="update-time">--:--</span></small>
+      </div>
+      <a href="https://github.com/HeiTang" target="_blank" rel="noopener noreferrer" class="github-link" aria-label="GitHub Repository">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+        </svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<style>
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    margin-bottom: 2rem;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    border-radius: 0 0 16px 16px;
+  }
+  
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+  
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .icon {
+    font-size: 1.75rem;
+  }
+  
+  h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.7) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .last-updated {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+  }
+  
+  .github-link {
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--transition-fast), transform var(--transition-bounce);
+  }
+  
+  .github-link:hover {
+    color: var(--color-text-primary);
+    transform: scale(1.1);
+  }
+</style>

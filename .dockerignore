@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+*.sqlite3
+
+# Node / JS
+web/node_modules/
+node_modules/
+npm-debug.log
+yarn-error.log
+web/dist/
+.astro/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+
+# Env Variables
+.env
+.env.*
+
+# Tests
+.pytest_cache/
+htmlcov/

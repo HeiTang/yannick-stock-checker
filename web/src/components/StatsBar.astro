@@ -1,0 +1,50 @@
+---
+---
+
+<div class="stats-bar glass-panel">
+  <div class="stat-item">
+    <span class="stat-label">有貨商品</span>
+    <span class="stat-value text-gradient" id="total-products">-</span>
+  </div>
+  <div class="stat-separator"></div>
+  <div class="stat-item">
+    <span class="stat-label">總可用庫存站點數</span>
+    <span class="stat-value text-gradient" id="total-inventory">-</span>
+  </div>
+</div>
+
+<style>
+  .stats-bar {
+    display: flex;
+    align-items: center;
+    padding: 1rem 2rem;
+    margin-bottom: 2rem;
+    border-radius: 12px;
+  }
+  
+  .stat-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .stat-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  
+  .stat-separator {
+    width: 1px;
+    height: 2rem;
+    background: var(--color-border);
+    margin: 0 2rem;
+  }
+</style>
