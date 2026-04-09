@@ -5,14 +5,30 @@ from __future__ import annotations
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 
 from app.core.cache import TTLCache
+from app.core.models import ProductAvailability
 
 router = APIRouter(prefix="/api")
 
 TW = timezone(timedelta(hours=8))
+
+# ── Helper ───────────────────────────────────────────────────
+
+async def get_index_with_bg_refresh(cache: TTLCache, bg_tasks: BackgroundTasks) -> dict[str, ProductAvailability]:
+    """Helper to return stale data while triggering a background refresh."""
+    if cache.is_expired:
+        if cache.status.last_updated is None:
+            # Cold start: must wait for the data
+            return await cache.force_refresh()
+        else:
+            # Stale data: return immediately, refresh in background
+            if not cache.status.is_syncing:
+                bg_tasks.add_task(cache.force_refresh)
+            return cache._product_index
+    return cache._product_index
 
 # ── Pydantic response models ────────────────────────────────
 
@@ -137,9 +153,9 @@ def _fmt_dt(dt: datetime | None) -> str | None:
 
 
 @router.get("/products", response_model=ProductListResponse)
-async def list_products() -> Any:
+async def list_products(background_tasks: BackgroundTasks) -> Any:
     cache = get_cache()
-    index = await cache.get_or_refresh()
+    index = await get_index_with_bg_refresh(cache, background_tasks)
     status = cache.status
 
     products = [
@@ -150,7 +166,7 @@ async def list_products() -> Any:
             price=a.product.price,
             available_stations=a.available_station_count,
             total_quantity=a.total_quantity,
-            lines=list({ss.station.branch_name or "其他" for ss in a.stations}),
+            lines=sorted({ss.station.branch_name or "其他" for ss in a.stations}),
         )
         for a in sorted(
             index.values(),
@@ -167,9 +183,9 @@ async def list_products() -> Any:
 
 
 @router.get("/products/{code}", response_model=ProductDetailResponse)
-async def get_product(code: str) -> Any:
+async def get_product(code: str, background_tasks: BackgroundTasks) -> Any:
     cache = get_cache()
-    index = await cache.get_or_refresh()
+    index = await get_index_with_bg_refresh(cache, background_tasks)
     status = cache.status
 
     avail = index.get(code)
@@ -202,10 +218,10 @@ async def get_product(code: str) -> Any:
 
 
 @router.get("/stations", response_model=StationListResponse)
-async def list_stations() -> Any:
+async def list_stations(background_tasks: BackgroundTasks) -> Any:
     cache = get_cache()
     # Ensure data is loaded
-    await cache.get_or_refresh()
+    await get_index_with_bg_refresh(cache, background_tasks)
     stations = cache.stations
 
     # Group by branch
@@ -240,9 +256,9 @@ async def list_stations() -> Any:
 
 
 @router.get("/stations/{tid}", response_model=StationDetailResponse)
-async def get_station(tid: str) -> Any:
+async def get_station(tid: str, background_tasks: BackgroundTasks) -> Any:
     cache = get_cache()
-    index = await cache.get_or_refresh()
+    index = await get_index_with_bg_refresh(cache, background_tasks)
     status = cache.status
     stations = cache.stations
 
