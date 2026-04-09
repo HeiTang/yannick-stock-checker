@@ -20,7 +20,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.head_ref || github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -44,9 +44,11 @@ jobs:
           pytest --cov=app tests/ --cov-report=term-missing --cov-report=xml
 
       - name: Generate Coverage Badge
+        if: github.event_name == 'push'
         run: genbadge coverage -i coverage.xml -o coverage.svg
 
       - name: Commit Coverage Badge
+        if: github.event_name == 'push'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "docs(coverage): update coverage badge [skip ci]"
