@@ -172,3 +172,27 @@ def test_post_refresh(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["success"] is True
+
+
+# ── API Contract: last_updated must be parseable ISO 8601 ────
+
+
+def _assert_iso8601(value: str | None, field: str) -> None:
+    """Assert the value is a non-null, timezone-aware ISO 8601 string."""
+    assert value is not None, f"{field} must not be null"
+    dt = datetime.fromisoformat(value)  # raises ValueError if unparseable
+    assert dt.tzinfo is not None, f"{field} must include timezone info"
+
+
+def test_products_last_updated_is_iso8601(client):
+    resp = client.get("/api/products")
+    assert resp.status_code == 200
+    data = resp.json()
+    _assert_iso8601(data.get("last_updated"), "products.last_updated")
+
+
+def test_product_detail_last_updated_is_iso8601(client):
+    resp = client.get("/api/products/CODE1")
+    assert resp.status_code == 200
+    data = resp.json()
+    _assert_iso8601(data.get("last_updated"), "product_detail.last_updated")

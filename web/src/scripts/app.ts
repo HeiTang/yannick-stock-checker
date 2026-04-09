@@ -1,3 +1,5 @@
+import { formatTimestamp } from './utils';
+
 // Types
 interface ProductSummary {
   commodity_code: string;
@@ -72,7 +74,7 @@ async function fetchAndRenderProducts() {
     renderGlobalFilters();
     applyFilters();
     updateStats(products);
-    updateTimestamp();
+    updateTimestamp(data.last_updated ?? null);
   } catch (error) {
     console.error('Failed to fetch products:', error);
     if (elements.productGrid) {
@@ -324,11 +326,9 @@ function updateStats(products: ProductSummary[]) {
 }
 
 // Update Timestamp
-function updateTimestamp() {
+function updateTimestamp(serverTime: string | null) {
   if (elements.updateTime) {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-    elements.updateTime.textContent = timeStr;
+    elements.updateTime.textContent = formatTimestamp(serverTime);
   }
 }
 
