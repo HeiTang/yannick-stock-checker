@@ -27,3 +27,4 @@ web/dist/
 # Tests
 .pytest_cache/
 htmlcov/
+\n.coverage
