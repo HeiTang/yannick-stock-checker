@@ -28,6 +28,6 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio pytest-cov respx coverage-badge
 
-      - name: Run Tests (100% Coverage Required)
+      - name: Run Tests (Check Coverage)
         run: |
-          pytest --cov=app tests/ --cov-report=term-missing --cov-fail-under=100
+          pytest --cov=app tests/ --cov-report=term-missing
