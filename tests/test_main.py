@@ -35,7 +35,10 @@ def test_lifespan_exception():
 def test_mount_static_files_when_dist_exists():
     """When dist/ exists, mount() should be called."""
     test_app = FastAPI()
-    with patch("os.path.exists", return_value=True), patch("os.path.isdir", return_value=True):
+    with (
+        patch("os.path.exists", return_value=True),
+        patch("os.path.isdir", return_value=True),
+    ):
         with patch.object(test_app, "mount") as mock_mount:
             app.main.mount_static_files(test_app)
             mock_mount.assert_called_once()
