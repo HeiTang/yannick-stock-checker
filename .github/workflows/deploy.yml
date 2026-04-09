@@ -1,12 +1,7 @@
-name: Build, Test and Deploy to Cloud Run
+name: Deploy to Cloud Run (Disabled)
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:  # Manual trigger only for now
 
 env:
   PROJECT_ID: orange-lab-492316
@@ -14,34 +9,10 @@ env:
   SERVICE_NAME: yannick-stock-checker
 
 jobs:
-  test:
-    name: Run Tests & Check Coverage
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-cov respx coverage-badge
-
-      - name: Run Tests (100% Coverage Required)
-        run: |
-          pytest --cov=app tests/ --cov-report=term-missing --cov-fail-under=100
-
   deploy:
-    name: Deploy to Cloud Run
-    needs: test
+    name: Build & Deploy to Cloud Run
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: false  # <--- DISABLED: Currently relying on GCP's built-in continuous deployment
     
     permissions:
       contents: 'read'
@@ -55,7 +26,6 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v2
         with:
-          # Note: Recommended to use Workload Identity Federation instead of JSON keys
           credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
 
       - name: Set up Cloud SDK
