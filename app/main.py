@@ -62,11 +62,18 @@ app.include_router(api_router)
 
 # Static files for web frontend (Phase 3)
 import os
-dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web", "dist")
-if os.path.exists(dist_path):
-    app.mount("/", StaticFiles(directory=dist_path, html=True), name="static")
-else:
-    logger.warning(f"Static directory not found: {dist_path}. Run 'npm run build' in web/.")
+
+
+def mount_static_files(target_app: FastAPI) -> None:
+    """Mount the web frontend static files if dist/ exists."""
+    dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web", "dist")
+    if os.path.exists(dist_path):
+        target_app.mount("/", StaticFiles(directory=dist_path, html=True), name="static")
+    else:
+        logger.warning(f"Static directory not found: {dist_path}. Run 'npm run build' in web/.")
+
+
+mount_static_files(app)
 
 
 if __name__ == "__main__":
