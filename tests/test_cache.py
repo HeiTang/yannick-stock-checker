@@ -28,8 +28,11 @@ def _make_product_index() -> dict[str, ProductAvailability]:
         price=100,
     )
     station = Station(
-        tid="S1", name="測試站", address="測試地址",
-        branch_code="001", branch_name="測試據點",
+        tid="S1",
+        name="測試站",
+        address="測試地址",
+        branch_code="001",
+        branch_name="測試據點",
     )
     avail = ProductAvailability(
         product=product,
@@ -85,7 +88,14 @@ async def test_force_refresh_logic():
     cache = TTLCache()
     cache._scraper.fetch_stations = AsyncMock(
         return_value=[
-            Station(tid="1", name="S", address="A", branch_code="1", branch_name="B", photo_url="")
+            Station(
+                tid="1",
+                name="S",
+                address="A",
+                branch_code="1",
+                branch_name="B",
+                photo_url="",
+            )
         ]
     )
     cache._scraper.fetch_all_stocks = AsyncMock(return_value={"1": []})
@@ -121,21 +131,25 @@ async def test_concurrent_force_refresh_only_runs_once():
         ]
 
     cache._scraper.fetch_stations = slow_fetch_stations
-    cache._scraper.fetch_all_stocks = AsyncMock(return_value={
-        "1": [
-            StockItem(
-                sale_id="SALE1",
-                product_name="(YTM)測試蛋糕",
-                commodity_name="測試蛋糕",
-                commodity_code="P1",
-                commodity_id=1,
-                price=100,
-                quantity=3,
-            )
-        ]
-    })
+    cache._scraper.fetch_all_stocks = AsyncMock(
+        return_value={
+            "1": [
+                StockItem(
+                    sale_id="SALE1",
+                    product_name="(YTM)測試蛋糕",
+                    commodity_name="測試蛋糕",
+                    commodity_code="P1",
+                    commodity_id=1,
+                    price=100,
+                    quantity=3,
+                )
+            ]
+        }
+    )
 
     # Fire two refreshes concurrently
     await asyncio.gather(cache.force_refresh(), cache.force_refresh())
 
-    assert call_count == 1, "Scraper should only be called once due to lock + double-check"
+    assert call_count == 1, (
+        "Scraper should only be called once due to lock + double-check"
+    )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -61,16 +62,19 @@ app.add_middleware(
 app.include_router(api_router)
 
 # Static files for web frontend (Phase 3)
-import os
 
 
 def mount_static_files(target_app: FastAPI) -> None:
     """Mount the web frontend static files if dist/ exists."""
     dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web", "dist")
     if os.path.exists(dist_path):
-        target_app.mount("/", StaticFiles(directory=dist_path, html=True), name="static")
+        target_app.mount(
+            "/", StaticFiles(directory=dist_path, html=True), name="static"
+        )
     else:
-        logger.warning(f"Static directory not found: {dist_path}. Run 'npm run build' in web/.")
+        logger.warning(
+            f"Static directory not found: {dist_path}. Run 'npm run build' in web/."
+        )
 
 
 mount_static_files(app)

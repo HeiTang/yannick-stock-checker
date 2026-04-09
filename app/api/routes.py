@@ -17,7 +17,10 @@ TW = timezone(timedelta(hours=8))
 
 # ── Helper ───────────────────────────────────────────────────
 
-async def get_index_with_bg_refresh(cache: TTLCache, bg_tasks: BackgroundTasks) -> dict[str, ProductAvailability]:
+
+async def get_index_with_bg_refresh(
+    cache: TTLCache, bg_tasks: BackgroundTasks
+) -> dict[str, ProductAvailability]:
     """Helper to return stale data while triggering a background refresh."""
     if cache.is_expired:
         if cache.status.last_updated is None:
@@ -29,6 +32,7 @@ async def get_index_with_bg_refresh(cache: TTLCache, bg_tasks: BackgroundTasks) 
                 bg_tasks.add_task(cache.force_refresh)
             return cache._product_index
     return cache._product_index
+
 
 # ── Pydantic response models ────────────────────────────────
 

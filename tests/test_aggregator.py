@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from app.core.aggregator import StockAggregator
 from app.core.models import Station, StockItem
@@ -85,9 +84,23 @@ def test_build_product_index_multiple_products():
     stock_map = {
         "S1": [
             make_stock_item("CODE1", quantity=2),
-            make_stock_item("CODE2", commodity_name="生乳捲", product_name="(YTM)生乳捲", price=320, quantity=1),
+            make_stock_item(
+                "CODE2",
+                commodity_name="生乳捲",
+                product_name="(YTM)生乳捲",
+                price=320,
+                quantity=1,
+            ),
         ],
-        "S2": [make_stock_item("CODE2", commodity_name="生乳捲", product_name="(YTM)生乳捲", price=320, quantity=3)],
+        "S2": [
+            make_stock_item(
+                "CODE2",
+                commodity_name="生乳捲",
+                product_name="(YTM)生乳捲",
+                price=320,
+                quantity=3,
+            )
+        ],
         "S3": [],
     }
 

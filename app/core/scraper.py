@@ -68,7 +68,9 @@ class YannickScraper:
             resp.raise_for_status()
 
         elapsed = time.monotonic() - t0
-        logger.debug("Service page fetched in %.2fs (%d bytes)", elapsed, len(resp.text))
+        logger.debug(
+            "Service page fetched in %.2fs (%d bytes)", elapsed, len(resp.text)
+        )
 
         match = _MACHINES_RE.search(resp.text)
         if not match:
@@ -116,8 +118,12 @@ class YannickScraper:
                     wait = self._backoff(attempt)
                     logger.warning(
                         "  ⟳ Station %s: HTTP %d (%.2fs), retry %d/%d in %.1fs",
-                        station_id, resp.status_code, elapsed,
-                        attempt + 1, self._max_retries, wait,
+                        station_id,
+                        resp.status_code,
+                        elapsed,
+                        attempt + 1,
+                        self._max_retries,
+                        wait,
                     )
                     last_exc = httpx.HTTPStatusError(
                         f"HTTP {resp.status_code}",
@@ -154,7 +160,9 @@ class YannickScraper:
             if payload.get("Status", {}).get("code") != "00":
                 logger.warning(
                     "Non-OK status for station %s (%.2fs): %s",
-                    station_id, elapsed, payload,
+                    station_id,
+                    elapsed,
+                    payload,
                 )
                 return []
 
@@ -182,7 +190,8 @@ class YannickScraper:
                 elapsed,
                 retry_tag,
                 " — " + ", ".join(f"{i.commodity_name}(×{i.quantity})" for i in items)
-                if items else " (empty)",
+                if items
+                else " (empty)",
             )
             return items
 
@@ -199,8 +208,12 @@ class YannickScraper:
         logger.debug(
             "Starting parallel stock fetch for %d stations "
             "(concurrency=%d, delay=%.1fs, retries=%d, backoff=%.1f→%.1fs)",
-            total, self._semaphore._value, self._delay,
-            self._max_retries, self._initial_backoff, self._max_backoff,
+            total,
+            self._semaphore._value,
+            self._delay,
+            self._max_retries,
+            self._initial_backoff,
+            self._max_backoff,
         )
         t0 = time.monotonic()
 
@@ -236,6 +249,9 @@ class YannickScraper:
         total_items = sum(len(v) for v in result.values())
         logger.info(
             "Fetched stock for %d / %d stations in %.1fs (%d total items)",
-            ok, total, elapsed, total_items,
+            ok,
+            total,
+            elapsed,
+            total_items,
         )
         return result

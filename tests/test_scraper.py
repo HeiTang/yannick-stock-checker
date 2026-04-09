@@ -121,7 +121,11 @@ async def test_fetch_stock_empty_on_non_ok_status():
     respx.post(settings.stock_api_url).mock(
         return_value=httpx.Response(
             200,
-            json={"Result": {}, "Status": {"code": "99", "info": "error"}, "Alert": None},
+            json={
+                "Result": {},
+                "Status": {"code": "99", "info": "error"},
+                "Alert": None,
+            },
         )
     )
 
