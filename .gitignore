@@ -28,3 +28,6 @@ web/dist/
 .pytest_cache/
 htmlcov/
 .coverage
+
+# Coverage
+coverage.xml
