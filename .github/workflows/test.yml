@@ -14,9 +14,13 @@ jobs:
   test:
     name: Run Tests & Check Coverage
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -38,3 +42,12 @@ jobs:
       - name: Run Tests (Check Coverage)
         run: |
           pytest --cov=app tests/ --cov-report=term-missing
+
+      - name: Generate Coverage Badge
+        run: coverage-badge -f -o coverage.svg
+
+      - name: Commit Coverage Badge
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs(coverage): update coverage badge [skip ci]"
+          file_pattern: coverage.svg
