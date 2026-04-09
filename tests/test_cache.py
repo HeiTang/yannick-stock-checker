@@ -12,6 +12,7 @@ from app.core.models import (
     ProductAvailability,
     Station,
     StationStock,
+    StockItem,
     SyncStatus,
 )
 
@@ -120,7 +121,19 @@ async def test_concurrent_force_refresh_only_runs_once():
         ]
 
     cache._scraper.fetch_stations = slow_fetch_stations
-    cache._scraper.fetch_all_stocks = AsyncMock(return_value={"1": []})
+    cache._scraper.fetch_all_stocks = AsyncMock(return_value={
+        "1": [
+            StockItem(
+                sale_id="SALE1",
+                product_name="(YTM)測試蛋糕",
+                commodity_name="測試蛋糕",
+                commodity_code="P1",
+                commodity_id=1,
+                price=100,
+                quantity=3,
+            )
+        ]
+    })
 
     # Fire two refreshes concurrently
     await asyncio.gather(cache.force_refresh(), cache.force_refresh())
