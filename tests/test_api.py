@@ -185,10 +185,14 @@ def _assert_iso8601(value: str | None, field: str) -> None:
 
 
 def test_products_last_updated_is_iso8601(client):
-    data = client.get("/api/products").json()
+    resp = client.get("/api/products")
+    assert resp.status_code == 200
+    data = resp.json()
     _assert_iso8601(data.get("last_updated"), "products.last_updated")
 
 
 def test_product_detail_last_updated_is_iso8601(client):
-    data = client.get("/api/products/CODE1").json()
+    resp = client.get("/api/products/CODE1")
+    assert resp.status_code == 200
+    data = resp.json()
     _assert_iso8601(data.get("last_updated"), "product_detail.last_updated")

@@ -74,7 +74,7 @@ async function fetchAndRenderProducts() {
     renderGlobalFilters();
     applyFilters();
     updateStats(products);
-    updateTimestamp(data.last_updated);
+    updateTimestamp(data.last_updated ?? null);
   } catch (error) {
     console.error('Failed to fetch products:', error);
     if (elements.productGrid) {
