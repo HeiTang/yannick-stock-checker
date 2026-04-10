@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     # ── Server ───────────────────────────────────────────────
     host: str = "0.0.0.0"
     port: int = 8080
+    log_level: str = "INFO"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

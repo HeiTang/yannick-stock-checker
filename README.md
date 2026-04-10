@@ -161,7 +161,10 @@ python -m pytest tests/ -v
 | `RETRY_MAX_ATTEMPTS` | `3` | 失敗重試次數上限 |
 | `RETRY_INITIAL_BACKOFF` | `1.0` | 初始退避時間（秒） |
 | `RETRY_MAX_BACKOFF` | `8.0` | 退避時間上限（秒） |
+| `DB_PATH` | `data/yannick_stock.db` | SQLite 資料庫路徑 |
+| `HOST` | `0.0.0.0` | Server 綁定主機 |
 | `PORT` | `8080` | Server 監聽埠 |
+| `LOG_LEVEL` | `INFO` | 應用程式日誌等級 |
 | `WEBHOOK_URL` | - | Cloud Run Webhook URL（Phase 5） |
 
 ## 🗺️ Roadmap

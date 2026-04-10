@@ -15,7 +15,7 @@ from app.api.routes import get_cache, router as api_router
 from app.config import settings
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=getattr(logging, settings.log_level.upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 # Suppress noisy httpx debug logs (keep at INFO)
