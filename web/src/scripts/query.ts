@@ -5,6 +5,7 @@
 
 import { accentFor, flavorOf, type ProductSummary } from './products.ts';
 import { icon } from './icon.ts';
+import { escapeHtml } from './utils.ts';
 
 interface StationInfo {
   station_id: string;
@@ -676,11 +677,3 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   };
 }
 
-function escapeHtml(str: string): string {
-  return String(str ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}

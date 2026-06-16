@@ -84,7 +84,10 @@ import '../styles/query.css';
       const brandMarkHost = document.getElementById('yt-brand-mark');
       if (brandMarkHost) brandMarkHost.innerHTML = brandMarkSvg(38);
 
-      const page = document.getElementById('yt-page') as HTMLElement;
+      const page = document.getElementById('yt-page');
+      if (!(page instanceof HTMLElement)) {
+        throw new Error('Expected #yt-page root element to exist');
+      }
       initThemeMenu({ buttonSelector: '#yt-theme-btn', page });
 
       const updatedAt = document.getElementById('updated-at');

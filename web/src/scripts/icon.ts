@@ -12,5 +12,5 @@ export function icon(name: string, opts: { size?: number; weight?: IconWeight } 
   const size = opts.size ?? 16;
   const weight = opts.weight ?? 'regular';
   const weightCls = weight === 'regular' ? 'ph' : `ph-${weight}`;
-  return `<i class="${weightCls} ph-${name}" style="font-size:${size}px;line-height:1;display:inline-flex"></i>`;
+  return `<i class="${weightCls} ph-${name}" aria-hidden="true" style="font-size:${size}px;line-height:1;display:inline-flex"></i>`;
 }

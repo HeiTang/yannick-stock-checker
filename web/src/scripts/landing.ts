@@ -6,7 +6,7 @@
 import { accentFor, flavorOf, type ProductSummary } from './products.ts';
 import { initQueryConsole, type QueryHandle } from './query.ts';
 import { initThemeMenu } from './themeMenu.ts';
-import { formatTimestamp } from './utils.ts';
+import { formatTimestamp, escapeHtml } from './utils.ts';
 import { rollSwirlSvg, brandMarkSvg } from './svg.ts';
 import { icon } from './icon.ts';
 
@@ -15,15 +15,6 @@ interface StatusResponse {
   station_count: number;
   product_count: number;
   total_stock_items: number;
-}
-
-function escapeHtml(str: string): string {
-  return String(str ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 const brandMark = brandMarkSvg;

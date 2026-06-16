@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatTimestamp } from './utils';
+import { formatTimestamp, escapeHtml } from './utils';
 
 describe('formatTimestamp', () => {
   it('returns "--:--" when serverTime is null', () => {
@@ -31,5 +31,29 @@ describe('formatTimestamp', () => {
   it('handles ISO string with explicit +08:00 offset correctly', () => {
     const result = formatTimestamp('2026-04-10T23:59:00+08:00');
     expect(result).toBe('23:59');
+  });
+});
+
+describe('escapeHtml', () => {
+  it('returns empty string for null/undefined input', () => {
+    expect(escapeHtml(null as unknown as string)).toBe('');
+    expect(escapeHtml(undefined as unknown as string)).toBe('');
+  });
+
+  it('passes plain text through unchanged', () => {
+    expect(escapeHtml('Hello world')).toBe('Hello world');
+  });
+
+  it('escapes &, <, >, ", and \' so attribute interpolation is safe', () => {
+    expect(escapeHtml('A & B')).toBe('A &amp; B');
+    expect(escapeHtml('<script>alert(1)</script>')).toBe(
+      '&lt;script&gt;alert(1)&lt;/script&gt;',
+    );
+    expect(escapeHtml('say "hi"')).toBe('say &quot;hi&quot;');
+    expect(escapeHtml("it's fine")).toBe('it&#39;s fine');
+  });
+
+  it('escapes & first so already-escaped sequences double-encode safely', () => {
+    expect(escapeHtml('&amp;')).toBe('&amp;amp;');
   });
 });
