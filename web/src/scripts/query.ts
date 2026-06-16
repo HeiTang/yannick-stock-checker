@@ -158,7 +158,8 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         if (saved.station && allStations.some((s) => s.station_id === saved.station)) {
           initial.pickedStation = saved.station;
         }
-        if (typeof saved.located === 'boolean') initial.located = saved.located;
+        // Intentionally do not restore `located`: userPos is not persisted,
+        // restoring "located=true" would show stale label without distance data.
       }
     } catch {
       /* ignore */
@@ -228,7 +229,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
             ${icon('x', { size: 14, weight: 'bold' })}
           </button>
         </div>
-        <div class="yt-result-list yt-collapsible" role="listbox"></div>
+        <div class="yt-result-list yt-collapsible" role="group" aria-label="搜尋結果"></div>
       </div>
       <div class="yt-console-right"></div>
     </div>
@@ -250,7 +251,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
           view: state.view,
           product: state.pickedProduct,
           station: state.pickedStation,
-          located: state.located,
+          // located omitted on purpose — see initial-state restore
         }),
       );
     } catch {
