@@ -372,10 +372,13 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       $resultList.innerHTML = matches
         .map((s) => {
           const active = s.station_id === state.pickedStation ? ' is-active' : '';
+          const cached = stationDetailCache.get(s.station_id);
           const right =
             state.located && s.distanceKm != null
               ? formatDistance(s.distanceKm)
-              : `${(stationDetailCache.get(s.station_id) ?? []).length || '·'} 款`;
+              : cached !== undefined
+                ? `${cached.filter((r) => r.quantity > 0).length} 款`
+                : '·';
           return `
           <button class="yt-result${active}" type="button" data-tid="${escapeHtml(s.station_id)}">
             <span class="yt-result-dot" style="background:var(--yt-brand)"></span>
