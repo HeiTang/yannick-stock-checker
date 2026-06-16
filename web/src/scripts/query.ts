@@ -396,7 +396,12 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
 
   async function renderRightProduct() {
     const product = products.find((p) => p.commodity_code === state.pickedProduct) ?? products[0];
+    const expectedView = state.view;
+    const expectedCode = product.commodity_code;
     const detail = await loadProductDetail(product.commodity_code);
+    // Guard against stale render: user may have switched view/product
+    // between dispatch and await resolution.
+    if (state.view !== expectedView || state.pickedProduct !== expectedCode) return;
     if (!detail) {
       $right.innerHTML = `<div class="yt-empty">無法載入商品資料</div>`;
       return;
@@ -479,7 +484,12 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
 
   async function renderRightStation() {
     const station = stationById.get(state.pickedStation) ?? allStations[0];
+    const expectedView = state.view;
+    const expectedId = station.station_id;
     const rows = await loadStationDetail(station.station_id);
+    // Guard against stale render: user may have switched view/station
+    // between dispatch and await resolution.
+    if (state.view !== expectedView || state.pickedStation !== expectedId) return;
     if (!rows) {
       $right.innerHTML = `<div class="yt-empty">無法載入站點資料</div>`;
       return;
