@@ -1,68 +1,34 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import Header from '../components/Header.astro';
-import StatsBar from '../components/StatsBar.astro';
-import SearchBar from '../components/SearchBar.astro';
-import ProductGrid from '../components/ProductGrid.astro';
-import ProductCard from '../components/ProductCard.astro';
-import StationModal from '../components/StationModal.astro';
-import Footer from '../components/Footer.astro';
+import '../styles/query.css';
+import '../styles/landing.css';
 ---
 
-<Layout title="亞尼克 YTM 庫存查詢">
-  <Header />
-  
-  <main class="container">
-    <StatsBar />
-    <SearchBar />
-    <div id="global-filter-container"></div>
-    <ProductGrid />
-  </main>
-  
-  <Footer />
-  
-  <!-- Template included for client-side rendering -->
-  <ProductCard />
-  
-  <StationModal />
-  
-  <script>
-    import { initApp } from '../scripts/app.ts';
-    
-    // Global error listener for debugging
-    window.addEventListener('error', (e) => {
-      const errDiv = document.createElement('div');
-      errDiv.style.position = 'fixed';
-      errDiv.style.zIndex = '9999';
-      errDiv.style.background = 'rgba(255,0,0,0.8)';
-      errDiv.style.color = 'white';
-      errDiv.style.top = '0';
-      errDiv.style.left = '0';
-      errDiv.style.padding = '10px';
-      errDiv.style.whiteSpace = 'pre-wrap';
-      errDiv.style.fontSize = '12px';
-      errDiv.textContent = `Error: ${e.error?.message}\n${e.error?.stack}`;
-      document.body.appendChild(errDiv);
-    });
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>亞尼克・庫存雷達 · YTM Stock Radar</title>
+    <meta
+      name="description"
+      content="非官方 YTM 生乳捲庫存查詢工具：以商品為核心、即時反查全台仍有現貨的站點，並可由站點視角直接看在庫商品。"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#120A11" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+  </head>
+  <body>
+    <div class="yt-page" id="yt-page">
+      <div class="yt-shell" id="yt-shell"></div>
+    </div>
 
-    window.addEventListener('unhandledrejection', (e) => {
-      const errDiv = document.createElement('div');
-      errDiv.style.position = 'fixed';
-      errDiv.style.zIndex = '9999';
-      errDiv.style.background = 'rgba(200,0,0,0.8)';
-      errDiv.style.color = 'white';
-      errDiv.style.top = '50px';
-      errDiv.style.left = '0';
-      errDiv.style.padding = '10px';
-      errDiv.style.whiteSpace = 'pre-wrap';
-      errDiv.style.fontSize = '12px';
-      errDiv.textContent = `Promise Reject: ${e.reason?.message}\n${e.reason?.stack}`;
-      document.body.appendChild(errDiv);
-    });
-
-    // Initialize the app when the DOM is ready
-    document.addEventListener('DOMContentLoaded', () => {
-      initApp();
-    });
-  </script>
-</Layout>
+    <script>
+      import { initLanding } from '../scripts/landing.ts';
+      document.addEventListener('DOMContentLoaded', () => {
+        initLanding({ shellSelector: '#yt-shell', pageSelector: '#yt-page' });
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,110 @@
+---
+import '../styles/query.css';
+---
+
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>快速查庫存 · 亞尼克・庫存雷達</title>
+    <meta
+      name="description"
+      content="亞尼克・庫存雷達快速查詢頁：商品 / 站點雙視角，搜尋＋定位排序，書籤可分享、回訪零步驟。"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#120A11" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css"
+    />
+  </head>
+  <body>
+    <div class="yt-page" id="yt-page">
+      <div class="yt-lean-wrap">
+        <header class="yt-lean-top">
+          <div id="yt-brand-mark"></div>
+
+          <div style="line-height:1.12">
+            <div class="yt-wordmark">亞尼克・庫存雷達</div>
+            <div class="yt-wordmark-sub">快速查詢</div>
+          </div>
+
+          <div style="flex:1"></div>
+
+          <div class="yt-updated">
+            <span class="yt-pulse"></span>
+            <span>即時 <span id="updated-at">--:--</span></span>
+          </div>
+
+          <a class="yt-back" href="/">
+            <i class="ph-bold ph-info" style="font-size:15px"></i>
+            <span>關於</span>
+          </a>
+
+          <div class="yt-theme">
+            <button
+              class="yt-theme-btn"
+              id="yt-theme-btn"
+              type="button"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-label="主題與外觀"
+              title="主題與外觀"
+            ></button>
+          </div>
+        </header>
+
+        <main class="yt-lean-main">
+          <div id="query-console">
+            <div class="yt-empty" style="padding:60px 12px">載入中…</div>
+          </div>
+        </main>
+
+        <footer class="yt-lean-foot">
+          <span>非官方工具，與亞尼克無官方關聯；資料為展示用途。</span>
+        </footer>
+      </div>
+    </div>
+
+    <script>
+      import { initQueryConsole } from '../scripts/query.ts';
+      import { initThemeMenu } from '../scripts/themeMenu.ts';
+      import { formatTimestamp } from '../scripts/utils.ts';
+      import { brandMarkSvg } from '../scripts/svg.ts';
+
+      const brandMarkHost = document.getElementById('yt-brand-mark');
+      if (brandMarkHost) brandMarkHost.innerHTML = brandMarkSvg(38);
+
+      const page = document.getElementById('yt-page') as HTMLElement;
+      initThemeMenu({ buttonSelector: '#yt-theme-btn', page });
+
+      const updatedAt = document.getElementById('updated-at');
+
+      async function syncUpdatedAt() {
+        try {
+          const res = await fetch('/api/status');
+          if (!res.ok) return;
+          const data = await res.json();
+          if (updatedAt) updatedAt.textContent = formatTimestamp(data.last_updated ?? null);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        initQueryConsole({ rootSelector: '#query-console', persist: true, lean: true });
+        syncUpdatedAt();
+        setInterval(syncUpdatedAt, 5 * 60 * 1000);
+      });
+    </script>
+  </body>
+</html>
