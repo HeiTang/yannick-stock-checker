@@ -123,7 +123,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     allStations = branches.flatMap((b) =>
       b.stations.map((s) => ({ ...s, branch_name: b.branch_name })),
     );
-  } catch (err) {
+  } catch {
     root.innerHTML = `<div class="yt-empty">無法載入資料，請稍後再試。</div>`;
     return { pickProduct() {} };
   }
@@ -134,6 +134,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   }
 
   const allBranchNames = Array.from(new Set(allStations.map((s) => s.branch_name)));
+  const stationById = new Map(allStations.map((s) => [s.station_id, s]));
 
   // ---- Initial state (URL + localStorage memory) ----
   const initial: QueryState = {
@@ -397,7 +398,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       return;
     }
     const stationsRaw = detail.stations.map((s) => {
-      const meta = allStations.find((x) => x.station_id === s.station_id);
+      const meta = stationById.get(s.station_id);
       return {
         ...s,
         lat: meta?.lat,
@@ -473,7 +474,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   }
 
   async function renderRightStation() {
-    const station = allStations.find((s) => s.station_id === state.pickedStation) ?? allStations[0];
+    const station = stationById.get(state.pickedStation) ?? allStations[0];
     const rows = await loadStationDetail(station.station_id);
     if (!rows) {
       $right.innerHTML = `<div class="yt-empty">無法載入站點資料</div>`;

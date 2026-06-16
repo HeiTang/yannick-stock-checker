@@ -284,12 +284,12 @@ export async function initLanding(opts: LandingOptions = {}): Promise<void> {
   });
 
   // ---- Load API data in parallel ----
-  await Promise.all([queryInitPromise, loadHeroAndWall(queryHandle)]);
+  await Promise.all([queryInitPromise, loadHeroAndWall()]);
   // queryHandle may have been replaced after initial wall render; re-bind wall click
   bindWallClicks(() => queryHandle);
 }
 
-async function loadHeroAndWall(_initialHandle: QueryHandle): Promise<void> {
+async function loadHeroAndWall(): Promise<void> {
   try {
     const [statusRes, prodRes] = await Promise.all([
       fetch('/api/status'),

@@ -137,12 +137,9 @@ export function initThemeMenu(opts: ThemeMenuOptions): { setDir: (k: ThemeKey) =
 
   function rebuild() {
     if (!popup) return;
-    const host = popup.parentElement;
     const newPop = buildPopup();
     popup.replaceWith(newPop);
     popup = newPop;
-    // re-attach listeners are already in buildPopup
-    void host;
     place();
   }
 
