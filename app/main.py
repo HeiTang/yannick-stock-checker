@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -24,12 +25,13 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Startup / shutdown lifecycle."""
-    logger.info("Application starting up …")
+async def _warm_up_cache() -> None:
+    """Background warm-up so startup does not block the port from binding.
 
-    # Warm up cache on startup
+    Without this, lifespan awaits a ~50s upstream scrape before yielding,
+    which means uvicorn cannot accept connections until the scrape finishes —
+    Cloud Run's startup probe interprets that as a failed container.
+    """
     cache = get_cache()
     try:
         await cache.force_refresh()
@@ -37,8 +39,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception:
         logger.exception("Initial cache warm-up failed — will retry on first request")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Startup / shutdown lifecycle."""
+    logger.info("Application starting up …")
+
+    # Fire-and-forget warm-up: yield immediately so the port becomes
+    # available to Cloud Run's startup health check. The first request
+    # that arrives before warm-up finishes will reuse the in-flight
+    # refresh via TTLCache's internal asyncio lock.
+    warm_up_task = asyncio.create_task(_warm_up_cache())
+
     yield
 
+    if not warm_up_task.done():
+        warm_up_task.cancel()
     logger.info("Application shutting down …")
 
 
