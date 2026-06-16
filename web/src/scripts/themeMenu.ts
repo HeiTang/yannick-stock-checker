@@ -103,11 +103,11 @@ export function initThemeMenu(opts: ThemeMenuOptions): { setDir: (k: ThemeKey) =
       ${dirRows}
       <div class="yt-theme-divider"></div>
       <div class="yt-theme-cap">外觀</div>
-      <div class="yt-seg" role="tablist" style="margin-top:2px">
-        <button class="yt-seg-btn${state.mode === 'light' ? ' is-active' : ''}" type="button" data-mode="light">
+      <div class="yt-seg" role="group" aria-label="外觀模式" style="margin-top:2px">
+        <button class="yt-seg-btn${state.mode === 'light' ? ' is-active' : ''}" type="button" data-mode="light" aria-pressed="${state.mode === 'light'}">
           ${modeIcon('light')}<span>淺色</span>
         </button>
-        <button class="yt-seg-btn${state.mode === 'dark' ? ' is-active' : ''}" type="button" data-mode="dark">
+        <button class="yt-seg-btn${state.mode === 'dark' ? ' is-active' : ''}" type="button" data-mode="dark" aria-pressed="${state.mode === 'dark'}">
           ${modeIcon('dark')}<span>深色</span>
         </button>
       </div>

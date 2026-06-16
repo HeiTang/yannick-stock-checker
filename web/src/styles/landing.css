@@ -429,12 +429,22 @@
   background: color-mix(in srgb, var(--yt-surface) 80%, transparent);
   border: 1px solid var(--yt-hairline);
   box-shadow: var(--shadow-1);
-  transition: transform 0.28s var(--ease-out-soft);
+  transition: transform 0.28s var(--ease-out-soft), box-shadow 0.18s, border-color 0.18s;
   display: flex;
   flex-direction: column;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
 }
 .yt-prod:hover {
   transform: translateY(-4px);
+}
+.yt-prod:focus-visible {
+  outline: none;
+  border-color: var(--yt-brand);
+  box-shadow: var(--shadow-1), 0 0 0 3px color-mix(in srgb, var(--yt-brand) 40%, transparent);
 }
 .yt-prod-top {
   position: relative;

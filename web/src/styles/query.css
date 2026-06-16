@@ -543,6 +543,24 @@ body {
   border-radius: 15px;
   background: color-mix(in srgb, var(--yt-ink) 4%, transparent);
   border: 1px solid var(--yt-hairline);
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+}
+.yt-srow--clickable {
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+}
+.yt-srow--clickable:hover {
+  background: color-mix(in srgb, var(--yt-brand) 8%, transparent);
+  border-color: color-mix(in srgb, var(--yt-brand) 28%, var(--yt-hairline));
+}
+.yt-srow--clickable:focus-visible {
+  outline: none;
+  border-color: var(--yt-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--yt-brand) 35%, transparent);
 }
 .yt-srow-photo {
   width: 40px;
@@ -552,9 +570,6 @@ body {
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--yt-brand) 14%, transparent);
-}
-.yt-srow {
-  min-width: 0;
 }
 .yt-srow-meta {
   flex: 1;

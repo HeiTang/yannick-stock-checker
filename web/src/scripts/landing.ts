@@ -295,6 +295,9 @@ async function loadHeroAndWall(_initialHandle: QueryHandle): Promise<void> {
       fetch('/api/status'),
       fetch('/api/products'),
     ]);
+    if (!statusRes.ok || !prodRes.ok) {
+      throw new Error(`API error: status=${statusRes.status} products=${prodRes.status}`);
+    }
     const status = (await statusRes.json()) as StatusResponse;
     const prodData = await prodRes.json();
     const products: ProductSummary[] = prodData.products ?? [];
@@ -330,7 +333,8 @@ async function loadHeroAndWall(_initialHandle: QueryHandle): Promise<void> {
         .map((p) => {
           const accent = accentFor(p.product_name);
           return `
-        <div class="yt-prod" data-code="${escapeHtml(p.commodity_code)}" style="--pc:${accent}">
+        <button class="yt-prod" type="button" data-code="${escapeHtml(p.commodity_code)}"
+                style="--pc:${accent}" aria-label="${escapeHtml(p.product_name)} 查全台站點">
           <div class="yt-prod-top">
             <div class="yt-prod-emblem">${rollSwirlSvg(64, accent, '#fff')}</div>
             <span class="yt-prod-badge">${p.available_stations} 站有貨</span>
@@ -347,7 +351,7 @@ async function loadHeroAndWall(_initialHandle: QueryHandle): Promise<void> {
               <span class="yt-prod-go">查站點 ${icon('caret-right', { size: 14, weight: 'bold' })}</span>
             </div>
           </div>
-        </div>`;
+        </button>`;
         })
         .join('');
     }

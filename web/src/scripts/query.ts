@@ -113,6 +113,9 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       fetch('/api/products'),
       fetch('/api/stations'),
     ]);
+    if (!pRes.ok || !sRes.ok) {
+      throw new Error(`API error: products=${pRes.status} stations=${sRes.status}`);
+    }
     const pData = await pRes.json();
     const sData = await sRes.json();
     products = (pData.products ?? []) as ProductSummary[];
@@ -210,11 +213,11 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   consoleEl.innerHTML = `
     <div class="yt-console-grid">
       <div class="yt-console-left">
-        <div class="yt-seg" role="tablist">
-          <button class="yt-seg-btn" data-view="products" type="button">
+        <div class="yt-seg" role="group" aria-label="查詢視角">
+          <button class="yt-seg-btn" data-view="products" type="button" aria-pressed="false">
             ${icon('cards', { size: 15, weight: 'bold' })}<span>商品視角</span>
           </button>
-          <button class="yt-seg-btn" data-view="stations" type="button">
+          <button class="yt-seg-btn" data-view="stations" type="button" aria-pressed="false">
             ${icon('map-pin', { size: 15, weight: 'bold' })}<span>站點視角</span>
           </button>
         </div>
@@ -326,7 +329,9 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   // ---- Render functions ----
   function renderSeg() {
     $segBtns.forEach((btn) => {
-      btn.classList.toggle('is-active', btn.dataset.view === state.view);
+      const isActive = btn.dataset.view === state.view;
+      btn.classList.toggle('is-active', isActive);
+      btn.setAttribute('aria-pressed', String(isActive));
     });
     $input.placeholder =
       state.view === 'products'
@@ -503,7 +508,9 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
               .map((p) => {
                 const accent = accentFor(p.product_name);
                 return `
-        <div class="yt-srow">
+        <button class="yt-srow yt-srow--clickable" type="button"
+                data-pick-product="${escapeHtml(p.commodity_code)}"
+                aria-label="${escapeHtml(p.product_name)} 查全台分布">
           <div class="yt-srow-photo" style="background:color-mix(in srgb, ${accent} 18%, transparent)">
             <span class="yt-srow-emoji-dot" style="background:${accent}"></span>
           </div>
@@ -516,7 +523,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
             <div class="yt-srow-dist">${p.quantity}</div>
             <div class="yt-srow-qty">條在庫</div>
           </div>
-        </div>`;
+        </button>`;
               })
               .join('')}
       </div>
@@ -605,8 +612,24 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     const locBtn = target.closest<HTMLButtonElement>('[data-locate]');
     if (locBtn && !isLocating) {
       toggleLocate();
+      return;
+    }
+    const pickBtn = target.closest<HTMLButtonElement>('[data-pick-product]');
+    if (pickBtn) {
+      const code = pickBtn.dataset.pickProduct;
+      if (code) pickProductInternal(code);
     }
   });
+
+  function pickProductInternal(code: string): void {
+    if (!products.some((p) => p.commodity_code === code)) return;
+    state.view = 'products';
+    state.keyword = '';
+    state.pickedProduct = code;
+    $input.value = '';
+    persistState();
+    renderAll();
+  }
 
   function toggleLocate() {
     if (state.located) {
@@ -644,15 +667,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   await renderAll();
 
   return {
-    pickProduct(code: string) {
-      if (!products.some((p) => p.commodity_code === code)) return;
-      state.view = 'products';
-      state.keyword = '';
-      state.pickedProduct = code;
-      $input.value = '';
-      persistState();
-      renderAll();
-    },
+    pickProduct: pickProductInternal,
   };
 }
 
