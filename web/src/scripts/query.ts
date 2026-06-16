@@ -267,7 +267,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       u.set('s', state.pickedStation);
       u.delete('p');
     }
-    history.replaceState(null, '', location.pathname + '?' + u.toString());
+    history.replaceState(null, '', location.pathname + '?' + u.toString() + location.hash);
   };
 
   async function loadProductDetail(code: string): Promise<ProductDetail | null> {
@@ -353,7 +353,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         .map((p) => {
           const active = p.commodity_code === state.pickedProduct ? ' is-active' : '';
           return `
-          <button class="yt-result${active}" type="button" data-code="${p.commodity_code}">
+          <button class="yt-result${active}" type="button" data-code="${escapeHtml(p.commodity_code)}">
             <span class="yt-result-dot" style="background:${accentFor(p.product_name)}"></span>
             <span class="yt-result-text">
               <span class="yt-result-name">${escapeHtml(p.product_name)}</span>
@@ -377,7 +377,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
               ? formatDistance(s.distanceKm)
               : `${(stationDetailCache.get(s.station_id) ?? []).length || '·'} 款`;
           return `
-          <button class="yt-result${active}" type="button" data-tid="${s.station_id}">
+          <button class="yt-result${active}" type="button" data-tid="${escapeHtml(s.station_id)}">
             <span class="yt-result-dot" style="background:var(--yt-brand)"></span>
             <span class="yt-result-text">
               <span class="yt-result-name">${escapeHtml(s.station_name)}</span>

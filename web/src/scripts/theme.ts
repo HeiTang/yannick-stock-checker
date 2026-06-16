@@ -181,13 +181,14 @@ export interface ThemeState {
 }
 
 export function readSavedTheme(): ThemeState {
-  const def: ThemeState = { dir: 'cream', mode: 'light' };
+  let dir: ThemeKey = 'cream';
+  let mode: ThemeMode | undefined;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed.dir && DIRECTIONS[parsed.dir as ThemeKey]) def.dir = parsed.dir;
-      if (parsed.mode === 'light' || parsed.mode === 'dark') def.mode = parsed.mode;
+      if (parsed.dir && DIRECTIONS[parsed.dir as ThemeKey]) dir = parsed.dir;
+      if (parsed.mode === 'light' || parsed.mode === 'dark') mode = parsed.mode;
     }
   } catch {
     /* ignore */
@@ -195,9 +196,9 @@ export function readSavedTheme(): ThemeState {
   const u = new URLSearchParams(location.search);
   const urlDir = u.get('dir');
   const urlMode = u.get('mode');
-  if (urlDir && DIRECTIONS[urlDir as ThemeKey]) def.dir = urlDir as ThemeKey;
-  if (urlMode === 'light' || urlMode === 'dark') def.mode = urlMode;
-  return def;
+  if (urlDir && DIRECTIONS[urlDir as ThemeKey]) dir = urlDir as ThemeKey;
+  if (urlMode === 'light' || urlMode === 'dark') mode = urlMode;
+  return { dir, mode: resolveMode(dir, mode) };
 }
 
 export function writeSavedTheme(state: ThemeState): void {
@@ -209,5 +210,5 @@ export function writeSavedTheme(state: ThemeState): void {
   const u = new URLSearchParams(location.search);
   u.set('dir', state.dir);
   u.set('mode', state.mode);
-  history.replaceState(null, '', location.pathname + '?' + u.toString());
+  history.replaceState(null, '', location.pathname + '?' + u.toString() + location.hash);
 }
