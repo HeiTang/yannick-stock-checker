@@ -109,6 +109,14 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   const stationDetailCache = new Map<string, StationProductRow[]>();
 
   // ---- Load initial data ----
+  // Counts are best-effort: kick off the fetch in parallel but catch errors
+  // so a failure on this endpoint cannot abort the page-critical
+  // products + stations load.
+  const countsPromise = fetch('/api/stations/counts')
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null);
+
+  let stationCounts: Record<string, number> = {};
   try {
     const [pRes, sRes] = await Promise.all([
       fetch('/api/products'),
@@ -127,6 +135,16 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   } catch {
     root.innerHTML = `<div class="yt-empty">無法載入資料，請稍後再試。</div>`;
     return { pickProduct() {} };
+  }
+
+  // Now resolve the best-effort counts; a null payload here is silently ignored.
+  const cData = (await countsPromise) as {
+    counts: Record<string, { product_count: number; total_quantity: number }>;
+  } | null;
+  if (cData?.counts) {
+    stationCounts = Object.fromEntries(
+      Object.entries(cData.counts).map(([tid, info]) => [tid, info.product_count]),
+    );
   }
 
   if (products.length === 0 || allStations.length === 0) {
@@ -373,13 +391,20 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       $resultList.innerHTML = matches
         .map((s) => {
           const active = s.station_id === state.pickedStation ? ' is-active' : '';
+          // Prefer the freshest source: detail-cache (post-click) > batch counts > "·".
+          // A fetched-but-empty station shows "0 款" (filtered on quantity > 0).
+          // `!== undefined` already covers `0` correctly, so a single check is enough.
           const cached = stationDetailCache.get(s.station_id);
+          let countLabel: string;
+          if (cached !== undefined) {
+            countLabel = `${cached.filter((r) => r.quantity > 0).length} 款`;
+          } else if (stationCounts[s.station_id] !== undefined) {
+            countLabel = `${stationCounts[s.station_id]} 款`;
+          } else {
+            countLabel = '·';
+          }
           const right =
-            state.located && s.distanceKm != null
-              ? formatDistance(s.distanceKm)
-              : cached !== undefined
-                ? `${cached.filter((r) => r.quantity > 0).length} 款`
-                : '·';
+            state.located && s.distanceKm != null ? formatDistance(s.distanceKm) : countLabel;
           return `
           <button class="yt-result${active}" type="button" data-tid="${escapeHtml(s.station_id)}">
             <span class="yt-result-dot" style="background:var(--yt-brand)"></span>

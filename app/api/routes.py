@@ -100,6 +100,26 @@ class StationListResponse(BaseModel):
     total_stations: int
 
 
+class StationCountInfo(BaseModel):
+    """Lightweight per-station counts for batch frontend prefetch."""
+
+    station_id: str
+    product_count: int  # number of distinct products currently in stock
+    total_quantity: int  # sum of stock quantities across those products
+
+
+class StationCountsResponse(BaseModel):
+    """Aggregate of `StationCountInfo` for every station carrying any stock.
+
+    Stations with zero current stock are omitted (caller can default to 0).
+    Lets the UI render the station-view result list without N round-trips
+    to `/api/stations/{tid}` for each station.
+    """
+
+    counts: dict[str, StationCountInfo]  # tid -> info
+    last_updated: str | None
+
+
 class StationStockInfo(BaseModel):
     commodity_code: str
     product_name: str
@@ -264,6 +284,43 @@ async def list_stations(background_tasks: BackgroundTasks) -> Any:
     return StationListResponse(
         branches=branches,
         total_stations=len(stations),
+    )
+
+
+@router.get("/stations/counts", response_model=StationCountsResponse)
+async def get_station_counts(background_tasks: BackgroundTasks) -> Any:
+    """Aggregate (product_count, total_quantity) per station from the cached
+    product → stations reverse index. Stations with no in-stock products
+    are omitted; the frontend can default to zero.
+
+    Frontend uses this on init to populate the station-view result list
+    without N round-trips to `/api/stations/{tid}`.
+    """
+    cache = get_cache()
+    index = await get_index_with_bg_refresh(cache, background_tasks)
+    status = cache.status
+
+    counts: dict[str, dict[str, int]] = {}
+    for avail in index.values():
+        for ss in avail.stations:
+            if ss.quantity <= 0:
+                continue
+            slot = counts.setdefault(
+                ss.station.tid, {"product_count": 0, "total_quantity": 0}
+            )
+            slot["product_count"] += 1
+            slot["total_quantity"] += ss.quantity
+
+    return StationCountsResponse(
+        counts={
+            tid: StationCountInfo(
+                station_id=tid,
+                product_count=info["product_count"],
+                total_quantity=info["total_quantity"],
+            )
+            for tid, info in counts.items()
+        },
+        last_updated=_fmt_dt(status.last_updated),
     )
 
 
