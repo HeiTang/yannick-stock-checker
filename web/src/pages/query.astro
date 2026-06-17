@@ -1,5 +1,12 @@
 ---
 import '../styles/query.css';
+
+const title = '快速查庫存 · 亞尼克・庫存雷達';
+const description =
+  '亞尼克・庫存雷達快速查詢頁：商品 / 站點雙視角，搜尋＋定位排序，書籤可分享、回訪零步驟。';
+// Always canonicalise to the bare /query path; the theme / view query
+// parameters are state, not separate pages, and shouldn't dilute indexing.
+const canonical = new URL('/query', Astro.site).href;
 ---
 
 <!doctype html>
@@ -7,13 +14,24 @@ import '../styles/query.css';
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>快速查庫存 · 亞尼克・庫存雷達</title>
-    <meta
-      name="description"
-      content="亞尼克・庫存雷達快速查詢頁：商品 / 站點雙視角，搜尋＋定位排序，書籤可分享、回訪零步驟。"
-    />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="theme-color" content="#120A11" />
+
+    <!-- Open Graph (Facebook / LINE / Discord / etc.) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="亞尼克・庫存雷達" />
+    <meta property="og:locale" content="zh_TW" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+
+    <!-- Twitter Card (Twitter / X) -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
     <link
       rel="stylesheet"
       href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css"
