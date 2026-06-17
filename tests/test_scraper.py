@@ -207,6 +207,22 @@ def test_load_station_coords_parses_valid_pairs(tmp_path, monkeypatch):
     assert coords["DDD"] is None
 
 
+def test_load_station_coords_rejects_bool_in_rich_entry(tmp_path, monkeypatch):
+    """`{"lat": true, "lng": false}` must not become `(1.0, 0.0)` — bool is
+    an int subclass and would otherwise pass `isinstance(int|float)`."""
+    p = tmp_path / "coords.json"
+    p.write_text(json.dumps({"AAA": {"lat": True, "lng": False}}), encoding="utf-8")
+    monkeypatch.setattr(scraper_module, "_STATION_COORDS_PATH", p)
+    assert scraper_module._load_station_coords()["AAA"] is None
+
+
+def test_load_station_coords_rejects_bool_in_legacy_list(tmp_path, monkeypatch):
+    p = tmp_path / "coords.json"
+    p.write_text(json.dumps({"AAA": [True, False]}), encoding="utf-8")
+    monkeypatch.setattr(scraper_module, "_STATION_COORDS_PATH", p)
+    assert scraper_module._load_station_coords()["AAA"] is None
+
+
 def test_load_station_coords_handles_non_dict_top_level(tmp_path, monkeypatch):
     """A JSON file whose top level is a list / number / string should not
     crash the scraper at module-import time — graceful empty dict instead.

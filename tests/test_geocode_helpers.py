@@ -88,6 +88,19 @@ def test_normalize_entry_garbage_returns_blank():
     assert out["lng"] is None
 
 
+def test_normalize_entry_rejects_bool_coords_in_dict():
+    """Python booleans are int subclass — must not slip in as `1.0` / `0.0`."""
+    out = _normalize_entry({"lat": True, "lng": False})
+    assert out["lat"] is None
+    assert out["lng"] is None
+
+
+def test_normalize_entry_rejects_bool_coords_in_legacy_list():
+    out = _normalize_entry([True, False])
+    assert out["lat"] is None
+    assert out["lng"] is None
+
+
 def test_normalize_entry_does_not_mutate_input():
     src = {"lat": 25.0, "lng": 121.0}
     _normalize_entry(src)

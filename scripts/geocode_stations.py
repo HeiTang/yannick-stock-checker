@@ -195,6 +195,21 @@ def is_resolved(entry: dict | None) -> bool:
     return entry.get("lat") is not None and entry.get("lng") is not None
 
 
+def _as_float(value: object) -> float | None:
+    """Coerce a JSON value to a float, but reject booleans.
+
+    Necessary because Python's `bool` is a subclass of `int`, so
+    `isinstance(True, (int, float))` is True and `float(True) == 1.0` —
+    that would silently turn a malformed `{"lat": true}` into a perfectly
+    valid-looking coordinate.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
 def _normalize_entry(entry: object) -> dict:
     """Coerce any on-disk entry shape into the rich-dict schema.
 
@@ -202,24 +217,26 @@ def _normalize_entry(entry: object) -> dict:
     abort the whole geocode run:
 
     * Unknown / extra keys are dropped, missing keys are filled with None.
-    * `lat` / `lng` are only kept if **both** parse as numbers; otherwise
-      both are set to None (a half-resolved entry is treated as unresolved).
+    * `lat` / `lng` are only kept if **both** parse as real numbers
+      (booleans excluded); otherwise both are set to None (a half-resolved
+      entry is treated as unresolved).
     """
     if isinstance(entry, dict):
         merged = {**_BLANK_ENTRY, **{k: entry.get(k) for k in _BLANK_ENTRY}}
-        lat, lng = merged["lat"], merged["lng"]
-        if isinstance(lat, (int, float)) and isinstance(lng, (int, float)):
-            merged["lat"] = float(lat)
-            merged["lng"] = float(lng)
+        lat = _as_float(merged["lat"])
+        lng = _as_float(merged["lng"])
+        if lat is not None and lng is not None:
+            merged["lat"], merged["lng"] = lat, lng
         else:
             merged["lat"] = None
             merged["lng"] = None
         return merged
     if isinstance(entry, list) and len(entry) == 2:
-        try:
-            return {**_BLANK_ENTRY, "lat": float(entry[0]), "lng": float(entry[1])}
-        except (TypeError, ValueError):
-            return dict(_BLANK_ENTRY)
+        lat = _as_float(entry[0])
+        lng = _as_float(entry[1])
+        if lat is not None and lng is not None:
+            return {**_BLANK_ENTRY, "lat": lat, "lng": lng}
+        return dict(_BLANK_ENTRY)
     return dict(_BLANK_ENTRY)
 
 

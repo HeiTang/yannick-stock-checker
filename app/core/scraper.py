@@ -66,19 +66,36 @@ def _load_station_coords() -> dict[str, tuple[float, float] | None]:
     return out
 
 
+def _as_float(value: object) -> float | None:
+    """Coerce a JSON value to a float, rejecting booleans.
+
+    Booleans must be excluded explicitly because Python's `bool` is a
+    subclass of `int`, so `isinstance(True, (int, float))` is True and
+    `float(True) == 1.0`. Otherwise a malformed JSON row like
+    ``{"lat": true, "lng": false}`` would silently become `(1.0, 0.0)`
+    and look like a perfectly resolved coordinate.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
 def _parse_coord_entry(entry: object) -> tuple[float, float] | None:
     """Extract (lat, lng) from either the rich-dict or legacy-list shape."""
     if isinstance(entry, dict):
-        lat = entry.get("lat")
-        lng = entry.get("lng")
-        if isinstance(lat, (int, float)) and isinstance(lng, (int, float)):
-            return float(lat), float(lng)
+        lat = _as_float(entry.get("lat"))
+        lng = _as_float(entry.get("lng"))
+        if lat is not None and lng is not None:
+            return lat, lng
         return None
     if isinstance(entry, list) and len(entry) == 2:
-        try:
-            return float(entry[0]), float(entry[1])
-        except (TypeError, ValueError):
-            return None
+        lat = _as_float(entry[0])
+        lng = _as_float(entry[1])
+        if lat is not None and lng is not None:
+            return lat, lng
+        return None
     return None
 
 
