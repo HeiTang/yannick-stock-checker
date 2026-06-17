@@ -6,7 +6,7 @@ re-runnable:
 
 * Already-resolved entries are skipped, unless their stored ``address``
   differs from the upstream value (which means re-geocoding is needed).
-* Previously failed entries (``lat == null``) are retried.
+* Previously failed entries (``lat`` or ``lng`` is null) are retried.
 
 Usage::
 

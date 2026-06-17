@@ -95,7 +95,8 @@ async def detect() -> dict:
                 }
             )
 
-    # Previously failed (in JSON but lat == null) — retry candidates.
+    # Previously failed (in JSON but lat or lng is null — checked via
+    # `is_resolved()`) — retry candidates.
     # Make the categories mutually exclusive: skip tids already covered by
     # `address_changed`, which will re-geocode anyway.
     addr_changed_tids = {item["tid"] for item in addr_changed}

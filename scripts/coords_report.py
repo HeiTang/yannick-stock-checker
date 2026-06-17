@@ -7,7 +7,7 @@ Lets a human spot-check geocoding results visually. Outputs:
 Each row has the station name, address, resolved coords, a Google Maps link
 and an OpenStreetMap link. Rows are sorted so problems float to the top:
 
-* ❌ unresolved (lat is null)
+* ❌ unresolved (lat or lng is null)
 * 🔍 out-of-Taiwan-bbox  (likely a wrong match — please verify)
 * ✅ ok                  (sorted by station name)
 
