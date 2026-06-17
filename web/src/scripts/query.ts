@@ -109,14 +109,18 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   const stationDetailCache = new Map<string, StationProductRow[]>();
 
   // ---- Load initial data ----
-  // `stationCounts` is best-effort: if the endpoint is missing or fails,
-  // we still fall back to "·" placeholders without aborting the page.
+  // Counts are best-effort: kick off the fetch in parallel but catch errors
+  // so a failure on this endpoint cannot abort the page-critical
+  // products + stations load.
+  const countsPromise = fetch('/api/stations/counts')
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null);
+
   let stationCounts: Record<string, number> = {};
   try {
-    const [pRes, sRes, cRes] = await Promise.all([
+    const [pRes, sRes] = await Promise.all([
       fetch('/api/products'),
       fetch('/api/stations'),
-      fetch('/api/stations/counts'),
     ]);
     if (!pRes.ok || !sRes.ok) {
       throw new Error(`API error: products=${pRes.status} stations=${sRes.status}`);
@@ -128,17 +132,19 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     allStations = branches.flatMap((b) =>
       b.stations.map((s) => ({ ...s, branch_name: b.branch_name })),
     );
-    if (cRes.ok) {
-      const cData = (await cRes.json()) as {
-        counts: Record<string, { product_count: number; total_quantity: number }>;
-      };
-      stationCounts = Object.fromEntries(
-        Object.entries(cData.counts ?? {}).map(([tid, info]) => [tid, info.product_count]),
-      );
-    }
   } catch {
     root.innerHTML = `<div class="yt-empty">無法載入資料，請稍後再試。</div>`;
     return { pickProduct() {} };
+  }
+
+  // Now resolve the best-effort counts; a null payload here is silently ignored.
+  const cData = (await countsPromise) as {
+    counts: Record<string, { product_count: number; total_quantity: number }>;
+  } | null;
+  if (cData?.counts) {
+    stationCounts = Object.fromEntries(
+      Object.entries(cData.counts).map(([tid, info]) => [tid, info.product_count]),
+    );
   }
 
   if (products.length === 0 || allStations.length === 0) {
@@ -387,15 +393,13 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
           const active = s.station_id === state.pickedStation ? ' is-active' : '';
           // Prefer the freshest source: detail-cache (post-click) > batch counts > "·".
           // A fetched-but-empty station shows "0 款" (filtered on quantity > 0).
+          // `!== undefined` already covers `0` correctly, so a single check is enough.
           const cached = stationDetailCache.get(s.station_id);
           let countLabel: string;
           if (cached !== undefined) {
             countLabel = `${cached.filter((r) => r.quantity > 0).length} 款`;
           } else if (stationCounts[s.station_id] !== undefined) {
             countLabel = `${stationCounts[s.station_id]} 款`;
-          } else if (s.station_id in stationCounts) {
-            // present-but-zero is currently filtered out by backend, kept for safety
-            countLabel = '0 款';
           } else {
             countLabel = '·';
           }
