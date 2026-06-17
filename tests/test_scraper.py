@@ -207,6 +207,16 @@ def test_load_station_coords_parses_valid_pairs(tmp_path, monkeypatch):
     assert coords["DDD"] is None
 
 
+def test_load_station_coords_handles_non_dict_top_level(tmp_path, monkeypatch):
+    """A JSON file whose top level is a list / number / string should not
+    crash the scraper at module-import time — graceful empty dict instead.
+    """
+    p = tmp_path / "coords.json"
+    p.write_text(json.dumps([1, 2, 3]), encoding="utf-8")
+    monkeypatch.setattr(scraper_module, "_STATION_COORDS_PATH", p)
+    assert scraper_module._load_station_coords() == {}
+
+
 def test_load_station_coords_parses_rich_schema(tmp_path, monkeypatch):
     """Loader also understands the rich dict-per-station shape."""
     p = tmp_path / "coords.json"

@@ -55,12 +55,14 @@ jobs:
         run: |
           PYTHONPATH=. python scripts/compose_pr_body.py manifest.json app/data/station_coords.json > pr_body.md
           # Compute count of unresolved entries that touched this PR for the title.
-          # Reuses `is_resolved()` so the predicate stays consistent with the rest of the code.
+          # Routes through `load_coords_file` so the predicate stays consistent
+          # with the rest of the tooling regardless of on-disk schema.
           unresolved=$(PYTHONPATH=. python - <<'PY'
           import json
-          from scripts.geocode_stations import is_resolved
+          from pathlib import Path
+          from scripts.geocode_stations import is_resolved, load_coords_file
           m = json.load(open('manifest.json'))
-          c = json.load(open('app/data/station_coords.json'))
+          c = load_coords_file(Path('app/data/station_coords.json'))
           touched = m['new'] + m['address_changed'] + m['previously_failed']
           n = sum(1 for it in touched if not is_resolved(c.get(it['tid'])))
           print(n)
@@ -86,7 +88,12 @@ jobs:
           fi
           git checkout -b "$BRANCH"
           git add app/data/station_coords.json app/data/COORDS_REPORT.md
-          git commit -m "chore(stations): auto-geocode upstream changes ($(date -u +%Y-%m-%d))" \
+          # `--allow-empty` is the alerting path: if upstream only *removed*
+          # stations (we don't auto-delete them), the JSON / report stay byte-
+          # identical and a normal commit would fail with "nothing to commit",
+          # silently dropping the alert. An empty commit keeps the PR flow alive.
+          git commit --allow-empty \
+            -m "chore(stations): auto-geocode upstream changes ($(date -u +%Y-%m-%d))" \
             -m "${{ steps.detect.outputs.summary }}"
           git push origin "$BRANCH"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"

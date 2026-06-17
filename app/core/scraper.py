@@ -48,6 +48,13 @@ def _load_station_coords() -> dict[str, tuple[float, float] | None]:
     except (OSError, ValueError) as err:
         logger.warning("Could not read %s: %s — distances unavailable", _STATION_COORDS_PATH, err)
         return {}
+    if not isinstance(raw, dict):
+        logger.warning(
+            "Coords file %s top-level is not a dict (got %s) — distances unavailable",
+            _STATION_COORDS_PATH,
+            type(raw).__name__,
+        )
+        return {}
     out: dict[str, tuple[float, float] | None] = {}
     for tid, entry in raw.items():
         out[tid] = _parse_coord_entry(entry)
