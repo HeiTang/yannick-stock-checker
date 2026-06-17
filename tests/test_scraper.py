@@ -207,6 +207,38 @@ def test_load_station_coords_parses_valid_pairs(tmp_path, monkeypatch):
     assert coords["DDD"] is None
 
 
+def test_load_station_coords_parses_rich_schema(tmp_path, monkeypatch):
+    """Loader also understands the rich dict-per-station shape."""
+    p = tmp_path / "coords.json"
+    p.write_text(
+        json.dumps(
+            {
+                "AAA": {
+                    "lat": 25.0353,
+                    "lng": 121.4999,
+                    "name": "板南線-龍山寺站",
+                    "address": "...",
+                    "resolved_at": "2026-06-17",
+                },
+                "BBB": {
+                    "lat": None,
+                    "lng": None,
+                    "name": "失敗站",
+                    "address": "...",
+                    "resolved_at": None,
+                },
+                "CCC": {"name": "no coords yet"},  # missing lat/lng → None
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(scraper_module, "_STATION_COORDS_PATH", p)
+    coords = scraper_module._load_station_coords()
+    assert coords["AAA"] == (25.0353, 121.4999)
+    assert coords["BBB"] is None
+    assert coords["CCC"] is None
+
+
 @pytest.mark.asyncio
 @respx.mock
 async def test_fetch_all_stocks():

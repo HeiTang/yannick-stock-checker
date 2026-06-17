@@ -34,6 +34,11 @@ def _load_station_coords() -> dict[str, tuple[float, float] | None]:
     Distance-sort features depend on this. Returning an empty mapping when
     the file isn't shipped (e.g. in a slimmed-down container) means stations
     just get `lat = lng = None` and the feature degrades gracefully.
+
+    Supports two on-disk shapes for forward / backward compatibility:
+
+    * Rich (current): ``{ tid: { "lat": x, "lng": y, "name": ..., ... } }``
+    * Legacy: ``{ tid: [lat, lng] | null }``
     """
     if not _STATION_COORDS_PATH.exists():
         logger.info("Station coords file not found at %s — distances unavailable", _STATION_COORDS_PATH)
@@ -44,17 +49,30 @@ def _load_station_coords() -> dict[str, tuple[float, float] | None]:
         logger.warning("Could not read %s: %s — distances unavailable", _STATION_COORDS_PATH, err)
         return {}
     out: dict[str, tuple[float, float] | None] = {}
-    for tid, pair in raw.items():
-        if isinstance(pair, list) and len(pair) == 2:
-            out[tid] = (float(pair[0]), float(pair[1]))
-        else:
-            out[tid] = None
+    for tid, entry in raw.items():
+        out[tid] = _parse_coord_entry(entry)
     logger.info(
         "Loaded coords for %d stations (%d resolved)",
         len(out),
         sum(1 for v in out.values() if v is not None),
     )
     return out
+
+
+def _parse_coord_entry(entry: object) -> tuple[float, float] | None:
+    """Extract (lat, lng) from either the rich-dict or legacy-list shape."""
+    if isinstance(entry, dict):
+        lat = entry.get("lat")
+        lng = entry.get("lng")
+        if isinstance(lat, (int, float)) and isinstance(lng, (int, float)):
+            return float(lat), float(lng)
+        return None
+    if isinstance(entry, list) and len(entry) == 2:
+        try:
+            return float(entry[0]), float(entry[1])
+        except (TypeError, ValueError):
+            return None
+    return None
 
 
 _STATION_COORDS: dict[str, tuple[float, float] | None] = _load_station_coords()
