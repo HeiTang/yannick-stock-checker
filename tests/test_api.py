@@ -151,6 +151,90 @@ def test_get_station_not_found(client):
     assert resp.status_code == 404
 
 
+def test_get_station_counts(client):
+    """Aggregated counts: 1 product (CODE1) across S1 (qty 2) and S2 (qty 1)."""
+    resp = client.get("/api/stations/counts")
+    assert resp.status_code == 200
+
+    data = resp.json()
+    assert set(data["counts"].keys()) == {"S1", "S2"}
+    assert data["counts"]["S1"] == {
+        "station_id": "S1",
+        "product_count": 1,
+        "total_quantity": 2,
+    }
+    assert data["counts"]["S2"] == {
+        "station_id": "S2",
+        "product_count": 1,
+        "total_quantity": 1,
+    }
+    assert data["last_updated"] is not None
+
+
+def test_station_counts_not_shadowed_by_detail_route(client):
+    """`/api/stations/counts` must NOT be matched by `/api/stations/{tid}` —
+    the literal route has to be registered first to take precedence over
+    the catch-all path parameter."""
+    resp = client.get("/api/stations/counts")
+    # If this came back 404, FastAPI matched /stations/{tid='counts'} and the
+    # handler couldn't find a station named "counts".
+    assert resp.status_code == 200
+    assert "counts" in resp.json()
+
+
+def test_station_counts_omits_zero_stock_stations():
+    """Stations whose only stock entry has quantity == 0 should not appear."""
+    from app.core.models import (
+        Product,
+        ProductAvailability,
+        Station,
+        StationStock,
+        SyncStatus,
+    )
+
+    cache = TTLCache(ttl_seconds=999_999)
+    s_with_stock = Station(
+        tid="HAS",
+        name="有貨站",
+        address="",
+        branch_code="001",
+        branch_name="台北捷運據點",
+    )
+    s_zero = Station(
+        tid="ZERO",
+        name="零庫存站",
+        address="",
+        branch_code="001",
+        branch_name="台北捷運據點",
+    )
+    product = Product(
+        commodity_code="C1",
+        product_name="P",
+        commodity_name="P",
+        price=100,
+    )
+    avail = ProductAvailability(
+        product=product,
+        stations=[
+            StationStock(station=s_with_stock, quantity=5),
+            StationStock(station=s_zero, quantity=0),
+        ],
+    )
+    cache._product_index = {"C1": avail}
+    cache._stations = [s_with_stock, s_zero]
+    cache._status = SyncStatus(last_updated=datetime.now(TW))
+
+    set_cache(cache)
+    try:
+        client = TestClient(_test_app, raise_server_exceptions=False)
+        data = client.get("/api/stations/counts").json()
+        assert "HAS" in data["counts"]
+        assert "ZERO" not in data["counts"]
+        assert data["counts"]["HAS"]["total_quantity"] == 5
+    finally:
+        set_cache(make_test_cache())
+
+
 def test_get_status(client):
     resp = client.get("/api/status")
     assert resp.status_code == 200
