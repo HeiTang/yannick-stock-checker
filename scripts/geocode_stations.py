@@ -145,7 +145,9 @@ def save(path: Path, coords: dict[str, list[float] | None]) -> None:
 
 
 async def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    )
 
     scraper = YannickScraper()
     stations = await scraper.fetch_stations()
@@ -154,7 +156,12 @@ async def main() -> None:
     coords: dict[str, list[float] | None] = load_existing(OUTPUT_PATH)
     if coords:
         already = sum(1 for v in coords.values() if v is not None)
-        logger.info("Loaded %d existing entries (%d resolved) from %s", len(coords), already, OUTPUT_PATH)
+        logger.info(
+            "Loaded %d existing entries (%d resolved) from %s",
+            len(coords),
+            already,
+            OUTPUT_PATH,
+        )
 
     headers = {"User-Agent": USER_AGENT}
     async with httpx.AsyncClient(headers=headers) as client:
