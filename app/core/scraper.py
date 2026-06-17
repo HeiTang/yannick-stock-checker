@@ -36,6 +36,11 @@ def _load_station_coords() -> dict[str, tuple[float, float] | None]:
     Distance-sort features depend on this. Returning an empty mapping when
     the file isn't shipped (e.g. in a slimmed-down container) means stations
     just get `lat = lng = None` and the feature degrades gracefully.
+
+    Supports two on-disk shapes for forward / backward compatibility:
+
+    * Rich (current): ``{ tid: { "lat": x, "lng": y, "name": ..., ... } }``
+    * Legacy: ``{ tid: [lat, lng] | null }``
     """
     if not _STATION_COORDS_PATH.exists():
         logger.info(
@@ -50,18 +55,55 @@ def _load_station_coords() -> dict[str, tuple[float, float] | None]:
             "Could not read %s: %s — distances unavailable", _STATION_COORDS_PATH, err
         )
         return {}
+    if not isinstance(raw, dict):
+        logger.warning(
+            "Coords file %s top-level is not a dict (got %s) — distances unavailable",
+            _STATION_COORDS_PATH,
+            type(raw).__name__,
+        )
+        return {}
     out: dict[str, tuple[float, float] | None] = {}
-    for tid, pair in raw.items():
-        if isinstance(pair, list) and len(pair) == 2:
-            out[tid] = (float(pair[0]), float(pair[1]))
-        else:
-            out[tid] = None
+    for tid, entry in raw.items():
+        out[tid] = _parse_coord_entry(entry)
     logger.info(
         "Loaded coords for %d stations (%d resolved)",
         len(out),
         sum(1 for v in out.values() if v is not None),
     )
     return out
+
+
+def _as_float(value: object) -> float | None:
+    """Coerce a JSON value to a float, rejecting booleans.
+
+    Booleans must be excluded explicitly because Python's `bool` is a
+    subclass of `int`, so `isinstance(True, (int, float))` is True and
+    `float(True) == 1.0`. Otherwise a malformed JSON row like
+    ``{"lat": true, "lng": false}`` would silently become `(1.0, 0.0)`
+    and look like a perfectly resolved coordinate.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
+def _parse_coord_entry(entry: object) -> tuple[float, float] | None:
+    """Extract (lat, lng) from either the rich-dict or legacy-list shape."""
+    if isinstance(entry, dict):
+        lat = _as_float(entry.get("lat"))
+        lng = _as_float(entry.get("lng"))
+        if lat is not None and lng is not None:
+            return lat, lng
+        return None
+    if isinstance(entry, list) and len(entry) == 2:
+        lat = _as_float(entry[0])
+        lng = _as_float(entry[1])
+        if lat is not None and lng is not None:
+            return lat, lng
+        return None
+    return None
 
 
 _STATION_COORDS: dict[str, tuple[float, float] | None] = _load_station_coords()
