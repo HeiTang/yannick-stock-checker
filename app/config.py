@@ -19,11 +19,8 @@ class Settings(BaseSettings):
     retry_initial_backoff: float = 1.0  # seconds
     retry_max_backoff: float = 8.0  # seconds cap
 
-    # ── Cache / Scheduler ────────────────────────────────────
+    # ── Cache ────────────────────────────────────────────────
     cache_ttl_seconds: int = 600  # 10 minutes
-
-    # ── Database ─────────────────────────────────────────────
-    db_path: str = "data/yannick_stock.db"
 
     # ── Server ───────────────────────────────────────────────
     host: str = "0.0.0.0"
