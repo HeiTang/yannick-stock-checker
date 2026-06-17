@@ -166,27 +166,48 @@ def load_existing(path: Path) -> dict[str, dict]:
     return out
 
 
+_BLANK_ENTRY = {
+    "lat": None,
+    "lng": None,
+    "name": None,
+    "address": None,
+    "resolved_at": None,
+}
+
+
+def is_resolved(entry: dict | None) -> bool:
+    """True when an entry has *both* numeric lat and lng (after normalization)."""
+    if not entry:
+        return False
+    return entry.get("lat") is not None and entry.get("lng") is not None
+
+
 def _normalize_entry(entry: object) -> dict:
     """Coerce any on-disk entry shape into the rich-dict schema.
 
     Designed to tolerate broken / partial data so a single bad row doesn't
-    abort the whole geocode run.
+    abort the whole geocode run:
+
+    * Unknown / extra keys are dropped, missing keys are filled with None.
+    * `lat` / `lng` are only kept if **both** parse as numbers; otherwise
+      both are set to None (a half-resolved entry is treated as unresolved).
     """
-    blank = {
-        "lat": None,
-        "lng": None,
-        "name": None,
-        "address": None,
-        "resolved_at": None,
-    }
     if isinstance(entry, dict):
-        return entry
+        merged = {**_BLANK_ENTRY, **{k: entry.get(k) for k in _BLANK_ENTRY}}
+        lat, lng = merged["lat"], merged["lng"]
+        if isinstance(lat, (int, float)) and isinstance(lng, (int, float)):
+            merged["lat"] = float(lat)
+            merged["lng"] = float(lng)
+        else:
+            merged["lat"] = None
+            merged["lng"] = None
+        return merged
     if isinstance(entry, list) and len(entry) == 2:
         try:
-            return {**blank, "lat": float(entry[0]), "lng": float(entry[1])}
+            return {**_BLANK_ENTRY, "lat": float(entry[0]), "lng": float(entry[1])}
         except (TypeError, ValueError):
-            return blank
-    return blank
+            return dict(_BLANK_ENTRY)
+    return dict(_BLANK_ENTRY)
 
 
 def save(path: Path, coords: dict[str, dict]) -> None:
@@ -205,9 +226,7 @@ def needs_geocode(entry: dict | None, station: Station) -> bool:
     * entry has no coords yet (previous failure → retry)
     * upstream address has changed since last resolve (re-geocode)
     """
-    if entry is None:
-        return True
-    if entry.get("lat") is None or entry.get("lng") is None:
+    if not is_resolved(entry):
         return True
     if station.address and entry.get("address") and station.address != entry.get("address"):
         return True
@@ -223,7 +242,7 @@ async def main() -> None:
 
     coords = load_existing(OUTPUT_PATH)
     if coords:
-        already = sum(1 for v in coords.values() if v.get("lat") is not None)
+        already = sum(1 for v in coords.values() if is_resolved(v))
         logger.info(
             "Loaded %d existing entries (%d resolved) from %s",
             len(coords),
@@ -278,7 +297,7 @@ async def main() -> None:
             await asyncio.sleep(REQUEST_DELAY)
 
     save(OUTPUT_PATH, coords)
-    matched = sum(1 for v in coords.values() if v.get("lat") is not None)
+    matched = sum(1 for v in coords.values() if is_resolved(v))
     logger.info(
         "Saved %d entries (%d resolved, %d unresolved) to %s",
         len(coords),

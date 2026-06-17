@@ -18,19 +18,20 @@ import json
 import sys
 from pathlib import Path
 
+# Make `app.*` / `scripts.*` importable when running directly.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from scripts.geocode_stations import is_resolved  # noqa: E402
+
 
 def maps_link(lat: float, lng: float) -> str:
     return f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
 
 
 def fmt_coords(entry: dict | None) -> str:
-    if entry is None:
-        return "—"
-    lat = entry.get("lat")
-    lng = entry.get("lng")
-    if lat is None or lng is None:
+    if not is_resolved(entry):
         return "⚠️ **failed — needs manual lookup**"
-    return f"{lat:.5f}, {lng:.5f} · [Maps]({maps_link(lat, lng)})"
+    return f"{entry['lat']:.5f}, {entry['lng']:.5f} · [Maps]({maps_link(entry['lat'], entry['lng'])})"
 
 
 def main() -> None:
@@ -49,7 +50,7 @@ def main() -> None:
     unresolved = [
         item
         for item in (*new_list, *addr_changed, *retried)
-        if coords.get(item["tid"], {}).get("lat") is None
+        if not is_resolved(coords.get(item["tid"]))
     ]
 
     lines: list[str] = []

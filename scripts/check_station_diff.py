@@ -42,14 +42,25 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.core.scraper import YannickScraper
+from scripts.geocode_stations import _normalize_entry, is_resolved
 
 COORDS_PATH = Path("app/data/station_coords.json")
 
 
 def load_coords() -> dict[str, dict]:
+    """Load the coords JSON, tolerating missing files, malformed JSON, or
+    legacy / partial entry shapes — every entry is run through
+    `_normalize_entry()` so downstream code can assume the rich schema.
+    """
     if not COORDS_PATH.exists():
         return {}
-    return json.loads(COORDS_PATH.read_text("utf-8"))
+    try:
+        raw = json.loads(COORDS_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    return {tid: _normalize_entry(entry) for tid, entry in raw.items()}
 
 
 async def detect() -> dict:
@@ -99,7 +110,7 @@ async def detect() -> dict:
     for tid, entry in coords.items():
         if tid not in upstream:
             continue
-        if entry.get("lat") is None or entry.get("lng") is None:
+        if not is_resolved(entry):
             s = upstream[tid]
             previously_failed.append(
                 {"tid": tid, "name": s.name, "address": s.address}

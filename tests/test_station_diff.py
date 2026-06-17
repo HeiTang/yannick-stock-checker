@@ -43,7 +43,8 @@ async def test_no_changes_when_state_matches(coords_file: Path):
                     "resolved_at": "2026-06-17",
                 }
             }
-        )
+        ),
+        encoding="utf-8",
     )
     upstream = [_make_station("T1", "板南線-龍山寺站", "addr-1")]
 
@@ -70,7 +71,8 @@ async def test_detects_new_station(coords_file: Path):
                     "resolved_at": "2026-06-17",
                 }
             }
-        )
+        ),
+        encoding="utf-8",
     )
     upstream = [
         _make_station("T1", "板南線-龍山寺站", "addr-1"),
@@ -99,7 +101,8 @@ async def test_detects_address_change(coords_file: Path):
                     "resolved_at": "2026-06-17",
                 }
             }
-        )
+        ),
+        encoding="utf-8",
     )
     upstream = [_make_station("T1", "S", "NEW")]
 
@@ -127,7 +130,8 @@ async def test_detects_removed_station(coords_file: Path):
                     "resolved_at": "2026-06-17",
                 }
             }
-        )
+        ),
+        encoding="utf-8",
     )
     upstream: list[Station] = []  # upstream forgot about T1
 
@@ -153,7 +157,8 @@ async def test_detects_previously_failed_for_retry(coords_file: Path):
                     "resolved_at": None,
                 }
             }
-        )
+        ),
+        encoding="utf-8",
     )
     upstream = [_make_station("T1", "Failed", "addr")]
 

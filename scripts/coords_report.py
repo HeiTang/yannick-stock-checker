@@ -31,6 +31,7 @@ from scripts.geocode_stations import (  # noqa: E402  (sibling script import)
     TW_LNG_MAX,
     TW_LNG_MIN,
     is_in_taiwan,
+    is_resolved,
 )
 
 COORDS_PATH = Path("app/data/station_coords.json")
@@ -53,11 +54,9 @@ def main() -> None:
     ok: list[tuple[str, dict]] = []
 
     for tid, entry in raw.items():
-        lat = entry.get("lat")
-        lng = entry.get("lng")
-        if lat is None or lng is None:
+        if not is_resolved(entry):
             unresolved.append((tid, entry))
-        elif not is_in_taiwan(lat, lng):
+        elif not is_in_taiwan(entry["lat"], entry["lng"]):
             out_of_bbox.append((tid, entry))
         else:
             ok.append((tid, entry))

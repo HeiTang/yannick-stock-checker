@@ -53,14 +53,16 @@ jobs:
         if: steps.detect.outputs.has_changes == 'True'
         id: compose
         run: |
-          python scripts/compose_pr_body.py manifest.json app/data/station_coords.json > pr_body.md
-          # Compute count of unresolved entries that touched this PR for the title
-          unresolved=$(python - <<'PY'
+          PYTHONPATH=. python scripts/compose_pr_body.py manifest.json app/data/station_coords.json > pr_body.md
+          # Compute count of unresolved entries that touched this PR for the title.
+          # Reuses `is_resolved()` so the predicate stays consistent with the rest of the code.
+          unresolved=$(PYTHONPATH=. python - <<'PY'
           import json
+          from scripts.geocode_stations import is_resolved
           m = json.load(open('manifest.json'))
           c = json.load(open('app/data/station_coords.json'))
           touched = m['new'] + m['address_changed'] + m['previously_failed']
-          n = sum(1 for it in touched if c.get(it['tid'], {}).get('lat') is None)
+          n = sum(1 for it in touched if not is_resolved(c.get(it['tid'])))
           print(n)
           PY
           )
