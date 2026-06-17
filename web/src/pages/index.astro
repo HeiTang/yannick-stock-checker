@@ -1,6 +1,11 @@
 ---
 import '../styles/query.css';
 import '../styles/landing.css';
+
+const title = '亞尼克・庫存雷達 · YTM Stock Radar';
+const description =
+  '非官方 YTM 生乳捲庫存查詢工具：以商品為核心、即時反查全台仍有現貨的站點，並可由站點視角直接看在庫商品。';
+const canonical = new URL('/', Astro.site).href;
 ---
 
 <!doctype html>
@@ -8,13 +13,46 @@ import '../styles/landing.css';
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>亞尼克・庫存雷達 · YTM Stock Radar</title>
-    <meta
-      name="description"
-      content="非官方 YTM 生乳捲庫存查詢工具：以商品為核心、即時反查全台仍有現貨的站點，並可由站點視角直接看在庫商品。"
-    />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="theme-color" content="#120A11" />
+
+    <!-- Open Graph (Facebook / LINE / Discord / etc.) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="亞尼克・庫存雷達" />
+    <meta property="og:locale" content="zh_TW" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+
+    <!-- Twitter Card (Twitter / X) -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <!-- Structured data: declare as a software-style tool so search engines
+         understand this is a query app, not a product page. -->
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebApplication',
+        name: '亞尼克・庫存雷達',
+        alternateName: 'YTM Stock Radar',
+        applicationCategory: 'UtilitiesApplication',
+        operatingSystem: 'Any',
+        url: Astro.site?.href,
+        description,
+        inLanguage: 'zh-Hant',
+        isAccessibleForFree: true,
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'TWD' },
+        disambiguatingDescription:
+          '非官方工具，與亞尼克無官方關聯；相關商標權利屬原權利人所有。',
+      })}
+    />
+
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css" />
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
