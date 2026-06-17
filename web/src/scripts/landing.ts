@@ -199,7 +199,7 @@ export async function initLanding(opts: LandingOptions = {}): Promise<void> {
           <span class="yt-tl" style="background:#FF5F57"></span>
           <span class="yt-tl" style="background:#FEBC2E"></span>
           <span class="yt-tl" style="background:#28C840"></span>
-          <span class="yt-api-host">${escapeHtml(location.host || 'yannick.purr.tw')}</span>
+          <span class="yt-api-host">${escapeHtml(location.host)}</span>
         </div>
         <div class="yt-api-rows">
           ${endpoints
