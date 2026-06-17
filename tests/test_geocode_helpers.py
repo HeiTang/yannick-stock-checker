@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from scripts.geocode_stations import _normalize_entry, is_resolved
+import json
+from pathlib import Path
+
+from scripts.geocode_stations import _normalize_entry, is_resolved, load_coords_file
 
 
 # ── is_resolved ─────────────────────────────────────────────
@@ -89,3 +92,54 @@ def test_normalize_entry_does_not_mutate_input():
     src = {"lat": 25.0, "lng": 121.0}
     _normalize_entry(src)
     assert "name" not in src
+
+
+# ── load_coords_file ────────────────────────────────────────
+
+
+def test_load_coords_file_returns_empty_when_missing(tmp_path: Path):
+    assert load_coords_file(tmp_path / "nope.json") == {}
+
+
+def test_load_coords_file_returns_empty_on_invalid_json(tmp_path: Path):
+    p = tmp_path / "bad.json"
+    p.write_text("{not json", encoding="utf-8")
+    assert load_coords_file(p) == {}
+
+
+def test_load_coords_file_returns_empty_when_top_level_isnt_dict(tmp_path: Path):
+    p = tmp_path / "list.json"
+    p.write_text(json.dumps([1, 2, 3]), encoding="utf-8")
+    assert load_coords_file(p) == {}
+
+
+def test_load_coords_file_normalizes_mixed_legacy_and_rich(tmp_path: Path):
+    """Any mixture of rich-dict, legacy-list, and garbage rows should produce
+    a clean rich-schema map without raising."""
+    p = tmp_path / "mixed.json"
+    p.write_text(
+        json.dumps(
+            {
+                "RICH": {
+                    "lat": 25.0,
+                    "lng": 121.0,
+                    "name": "rich",
+                    "address": "a",
+                    "resolved_at": "2026-06-17",
+                },
+                "LEGACY": [22.5, 120.3],
+                "GARBAGE": "lol",
+                "NULL_PAIR": None,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    out = load_coords_file(p)
+    assert out["RICH"]["lat"] == 25.0
+    assert out["LEGACY"]["lat"] == 22.5
+    assert out["LEGACY"]["name"] is None  # legacy has no metadata
+    assert out["GARBAGE"]["lat"] is None
+    assert out["NULL_PAIR"]["lat"] is None
+    # All values are dicts (caller can safely use the rich schema)
+    assert all(isinstance(v, dict) for v in out.values())

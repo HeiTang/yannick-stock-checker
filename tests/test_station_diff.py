@@ -145,6 +145,36 @@ async def test_detects_removed_station(coords_file: Path):
 
 
 @pytest.mark.asyncio
+async def test_address_change_takes_precedence_over_previously_failed(coords_file: Path):
+    """A station that's both unresolved AND has a new upstream address belongs
+    in `address_changed` only — `previously_failed` should not duplicate it.
+    """
+    coords_file.write_text(
+        json.dumps(
+            {
+                "T1": {
+                    "lat": None,
+                    "lng": None,
+                    "name": "S",
+                    "address": "OLD",
+                    "resolved_at": None,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    upstream = [_make_station("T1", "S", "NEW")]
+
+    with patch.object(diff.YannickScraper, "fetch_stations", return_value=upstream):
+        manifest = await diff.detect()
+
+    # Belongs to address_changed only — not duplicated under previously_failed
+    assert len(manifest["address_changed"]) == 1
+    assert manifest["address_changed"][0]["tid"] == "T1"
+    assert manifest["previously_failed"] == []
+
+
+@pytest.mark.asyncio
 async def test_detects_previously_failed_for_retry(coords_file: Path):
     coords_file.write_text(
         json.dumps(

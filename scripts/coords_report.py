@@ -32,6 +32,7 @@ from scripts.geocode_stations import (  # noqa: E402  (sibling script import)
     TW_LNG_MIN,
     is_in_taiwan,
     is_resolved,
+    load_coords_file,
 )
 
 COORDS_PATH = Path("app/data/station_coords.json")
@@ -47,7 +48,7 @@ def osm_link(lat: float, lng: float) -> str:
 
 
 def main() -> None:
-    raw = json.loads(COORDS_PATH.read_text("utf-8"))
+    raw = load_coords_file(COORDS_PATH)
 
     unresolved: list[tuple[str, dict]] = []
     out_of_bbox: list[tuple[str, dict]] = []

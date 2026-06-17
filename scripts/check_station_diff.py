@@ -42,25 +42,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.core.scraper import YannickScraper
-from scripts.geocode_stations import _normalize_entry, is_resolved
+from scripts.geocode_stations import is_resolved, load_coords_file
 
 COORDS_PATH = Path("app/data/station_coords.json")
 
 
 def load_coords() -> dict[str, dict]:
-    """Load the coords JSON, tolerating missing files, malformed JSON, or
-    legacy / partial entry shapes — every entry is run through
-    `_normalize_entry()` so downstream code can assume the rich schema.
-    """
-    if not COORDS_PATH.exists():
-        return {}
-    try:
-        raw = json.loads(COORDS_PATH.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-    if not isinstance(raw, dict):
-        return {}
-    return {tid: _normalize_entry(entry) for tid, entry in raw.items()}
+    """Thin wrapper over the shared loader (kept for test patching)."""
+    return load_coords_file(COORDS_PATH)
 
 
 async def detect() -> dict:
@@ -106,9 +95,14 @@ async def detect() -> dict:
                 }
             )
 
-    # Previously failed (in JSON but lat == null) — retry candidates
+    # Previously failed (in JSON but lat == null) — retry candidates.
+    # Make the categories mutually exclusive: skip tids already covered by
+    # `address_changed`, which will re-geocode anyway.
+    addr_changed_tids = {item["tid"] for item in addr_changed}
     for tid, entry in coords.items():
         if tid not in upstream:
+            continue
+        if tid in addr_changed_tids:
             continue
         if not is_resolved(entry):
             s = upstream[tid]

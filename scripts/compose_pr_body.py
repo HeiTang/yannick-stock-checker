@@ -21,7 +21,7 @@ from pathlib import Path
 # Make `app.*` / `scripts.*` importable when running directly.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.geocode_stations import is_resolved  # noqa: E402
+from scripts.geocode_stations import is_resolved, load_coords_file  # noqa: E402
 
 
 def maps_link(lat: float, lng: float) -> str:
@@ -38,8 +38,8 @@ def main() -> None:
     if len(sys.argv) != 3:
         print("usage: compose_pr_body.py <manifest.json> <coords.json>", file=sys.stderr)
         sys.exit(2)
-    manifest = json.loads(Path(sys.argv[1]).read_text("utf-8"))
-    coords = json.loads(Path(sys.argv[2]).read_text("utf-8"))
+    manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+    coords = load_coords_file(Path(sys.argv[2]))
 
     new_list = manifest.get("new", [])
     addr_changed = manifest.get("address_changed", [])

@@ -151,19 +151,32 @@ async def geocode_station(
     return None
 
 
-def load_existing(path: Path) -> dict[str, dict]:
-    """Load existing coords file (rich schema). Tolerates legacy [lat, lng] form."""
+def load_coords_file(path: Path) -> dict[str, dict]:
+    """Single source of truth: load + normalize a coords JSON file.
+
+    Safe against missing files, malformed JSON, and any pre-rich-schema shape.
+    Always returns a `{tid -> normalized rich-dict entry}` map; callers can
+    assume the rich schema (`is_resolved()`, dict indexing, etc.) without
+    further validation.
+
+    Used by every script in this directory as well as the GitHub Action.
+    """
     if not path.exists():
         return {}
     try:
-        raw = json.loads(path.read_text("utf-8"))
+        raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as err:
-        logger.warning("Could not read existing %s: %s — starting fresh", path, err)
+        logger.warning("Could not read %s: %s — treating as empty", path, err)
         return {}
-    out: dict[str, dict] = {}
-    for tid, entry in raw.items():
-        out[tid] = _normalize_entry(entry)
-    return out
+    if not isinstance(raw, dict):
+        return {}
+    return {tid: _normalize_entry(entry) for tid, entry in raw.items()}
+
+
+# Backwards-compat alias for the geocoder's own bootstrap path. The geocoder
+# also logs about the file, so it keeps its own thin wrapper.
+def load_existing(path: Path) -> dict[str, dict]:
+    return load_coords_file(path)
 
 
 _BLANK_ENTRY = {
