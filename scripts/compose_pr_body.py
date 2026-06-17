@@ -36,7 +36,9 @@ def fmt_coords(entry: dict | None) -> str:
 
 def main() -> None:
     if len(sys.argv) != 3:
-        print("usage: compose_pr_body.py <manifest.json> <coords.json>", file=sys.stderr)
+        print(
+            "usage: compose_pr_body.py <manifest.json> <coords.json>", file=sys.stderr
+        )
         sys.exit(2)
     manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     coords = load_coords_file(Path(sys.argv[2]))
@@ -96,7 +98,9 @@ def main() -> None:
         lines.append("|---|---|---|")
         for item in retried:
             entry = coords.get(item["tid"])
-            lines.append(f"| {item['name']} | {item['address']} | {fmt_coords(entry)} |")
+            lines.append(
+                f"| {item['name']} | {item['address']} | {fmt_coords(entry)} |"
+            )
         lines.append("")
 
     if removed:

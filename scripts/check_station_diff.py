@@ -107,9 +107,7 @@ async def detect() -> dict:
             continue
         if not is_resolved(entry):
             s = upstream[tid]
-            previously_failed.append(
-                {"tid": tid, "name": s.name, "address": s.address}
-            )
+            previously_failed.append({"tid": tid, "name": s.name, "address": s.address})
 
     has_changes = bool(new_list or addr_changed or removed or previously_failed)
     summary = (
@@ -131,7 +129,9 @@ async def detect() -> dict:
 
 async def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--output", help="Write JSON to this path instead of stdout")
+    parser.add_argument(
+        "-o", "--output", help="Write JSON to this path instead of stdout"
+    )
     args = parser.parse_args()
 
     manifest = await detect()

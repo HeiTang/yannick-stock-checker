@@ -76,6 +76,7 @@ TW_LNG_MIN, TW_LNG_MAX = 118.5, 122.5
 def is_in_taiwan(lat: float, lng: float) -> bool:
     return TW_LAT_MIN <= lat <= TW_LAT_MAX and TW_LNG_MIN <= lng <= TW_LNG_MAX
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -258,13 +259,19 @@ def needs_geocode(entry: dict | None, station: Station) -> bool:
     """
     if not is_resolved(entry):
         return True
-    if station.address and entry.get("address") and station.address != entry.get("address"):
+    if (
+        station.address
+        and entry.get("address")
+        and station.address != entry.get("address")
+    ):
         return True
     return False
 
 
 async def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    )
 
     scraper = YannickScraper()
     stations = await scraper.fetch_stations()

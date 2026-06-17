@@ -145,7 +145,9 @@ async def test_detects_removed_station(coords_file: Path):
 
 
 @pytest.mark.asyncio
-async def test_address_change_takes_precedence_over_previously_failed(coords_file: Path):
+async def test_address_change_takes_precedence_over_previously_failed(
+    coords_file: Path,
+):
     """A station that's both unresolved AND has a new upstream address belongs
     in `address_changed` only — `previously_failed` should not duplicate it.
     """

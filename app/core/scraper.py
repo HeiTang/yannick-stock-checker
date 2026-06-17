@@ -25,7 +25,9 @@ _RETRYABLE = (httpx.TimeoutException, httpx.ConnectError)
 
 # Static lookup of geocoded station coordinates.
 # Populated by `scripts/geocode_stations.py`. See app/data/station_coords.json.
-_STATION_COORDS_PATH = Path(__file__).resolve().parent.parent / "data" / "station_coords.json"
+_STATION_COORDS_PATH = (
+    Path(__file__).resolve().parent.parent / "data" / "station_coords.json"
+)
 
 
 def _load_station_coords() -> dict[str, tuple[float, float] | None]:
@@ -41,12 +43,17 @@ def _load_station_coords() -> dict[str, tuple[float, float] | None]:
     * Legacy: ``{ tid: [lat, lng] | null }``
     """
     if not _STATION_COORDS_PATH.exists():
-        logger.info("Station coords file not found at %s — distances unavailable", _STATION_COORDS_PATH)
+        logger.info(
+            "Station coords file not found at %s — distances unavailable",
+            _STATION_COORDS_PATH,
+        )
         return {}
     try:
         raw = json.loads(_STATION_COORDS_PATH.read_text("utf-8"))
     except (OSError, ValueError) as err:
-        logger.warning("Could not read %s: %s — distances unavailable", _STATION_COORDS_PATH, err)
+        logger.warning(
+            "Could not read %s: %s — distances unavailable", _STATION_COORDS_PATH, err
+        )
         return {}
     if not isinstance(raw, dict):
         logger.warning(
