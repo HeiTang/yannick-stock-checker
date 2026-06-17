@@ -9,7 +9,7 @@ and an OpenStreetMap link. Rows are sorted so problems float to the top:
 
 * ❌ unresolved (lat is null)
 * 🔍 out-of-Taiwan-bbox  (likely a wrong match — please verify)
-* ✅ ok                  (sorted by branch then name)
+* ✅ ok                  (sorted by station name)
 
 Usage::
 

@@ -162,25 +162,31 @@ def load_existing(path: Path) -> dict[str, dict]:
         return {}
     out: dict[str, dict] = {}
     for tid, entry in raw.items():
-        if isinstance(entry, dict):
-            out[tid] = entry
-        elif isinstance(entry, list) and len(entry) == 2:
-            out[tid] = {
-                "lat": float(entry[0]),
-                "lng": float(entry[1]),
-                "name": None,
-                "address": None,
-                "resolved_at": None,
-            }
-        else:
-            out[tid] = {
-                "lat": None,
-                "lng": None,
-                "name": None,
-                "address": None,
-                "resolved_at": None,
-            }
+        out[tid] = _normalize_entry(entry)
     return out
+
+
+def _normalize_entry(entry: object) -> dict:
+    """Coerce any on-disk entry shape into the rich-dict schema.
+
+    Designed to tolerate broken / partial data so a single bad row doesn't
+    abort the whole geocode run.
+    """
+    blank = {
+        "lat": None,
+        "lng": None,
+        "name": None,
+        "address": None,
+        "resolved_at": None,
+    }
+    if isinstance(entry, dict):
+        return entry
+    if isinstance(entry, list) and len(entry) == 2:
+        try:
+            return {**blank, "lat": float(entry[0]), "lng": float(entry[1])}
+        except (TypeError, ValueError):
+            return blank
+    return blank
 
 
 def save(path: Path, coords: dict[str, dict]) -> None:
