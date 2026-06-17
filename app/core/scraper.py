@@ -8,6 +8,7 @@ import logging
 import random
 import re
 import time
+from pathlib import Path
 
 import httpx
 
@@ -21,6 +22,49 @@ _MACHINES_RE = re.compile(r"let\s+Machines\s*=\s*(\[.*?\])\s*;", re.DOTALL)
 
 # Errors that are safe to retry (transient network / server issues).
 _RETRYABLE = (httpx.TimeoutException, httpx.ConnectError)
+
+# Static lookup of geocoded station coordinates.
+# Populated by `scripts/geocode_stations.py`. See app/data/station_coords.json.
+_STATION_COORDS_PATH = (
+    Path(__file__).resolve().parent.parent / "data" / "station_coords.json"
+)
+
+
+def _load_station_coords() -> dict[str, tuple[float, float] | None]:
+    """Load static (tid -> (lat, lng)) lookup, tolerating missing/broken files.
+
+    Distance-sort features depend on this. Returning an empty mapping when
+    the file isn't shipped (e.g. in a slimmed-down container) means stations
+    just get `lat = lng = None` and the feature degrades gracefully.
+    """
+    if not _STATION_COORDS_PATH.exists():
+        logger.info(
+            "Station coords file not found at %s — distances unavailable",
+            _STATION_COORDS_PATH,
+        )
+        return {}
+    try:
+        raw = json.loads(_STATION_COORDS_PATH.read_text("utf-8"))
+    except (OSError, ValueError) as err:
+        logger.warning(
+            "Could not read %s: %s — distances unavailable", _STATION_COORDS_PATH, err
+        )
+        return {}
+    out: dict[str, tuple[float, float] | None] = {}
+    for tid, pair in raw.items():
+        if isinstance(pair, list) and len(pair) == 2:
+            out[tid] = (float(pair[0]), float(pair[1]))
+        else:
+            out[tid] = None
+    logger.info(
+        "Loaded coords for %d stations (%d resolved)",
+        len(out),
+        sum(1 for v in out.values() if v is not None),
+    )
+    return out
+
+
+_STATION_COORDS: dict[str, tuple[float, float] | None] = _load_station_coords()
 
 
 class ScraperError(Exception):
@@ -77,18 +121,23 @@ class YannickScraper:
             raise ScraperError("Cannot locate Machines JSON in page source")
 
         raw: list[dict] = json.loads(match.group(1))
-        stations = [
-            Station(
-                tid=m["TID"],
-                name=m["TName"],
-                address=m.get("TAddr", ""),
-                branch_code=m["RID"],
-                branch_name=m["RName"],
-                photo_url=m.get("PHOTO_URL", ""),
-                sort=m.get("Sort", 0),
+        stations = []
+        for m in raw:
+            coords = _STATION_COORDS.get(m["TID"])
+            lat, lng = coords if coords else (None, None)
+            stations.append(
+                Station(
+                    tid=m["TID"],
+                    name=m["TName"],
+                    address=m.get("TAddr", ""),
+                    branch_code=m["RID"],
+                    branch_name=m["RName"],
+                    photo_url=m.get("PHOTO_URL", ""),
+                    sort=m.get("Sort", 0),
+                    lat=lat,
+                    lng=lng,
+                )
             )
-            for m in raw
-        ]
         logger.info("Fetched %d stations from service page", len(stations))
         for s in stations:
             logger.debug("  Station: [%s] %s (%s)", s.tid, s.name, s.branch_name)

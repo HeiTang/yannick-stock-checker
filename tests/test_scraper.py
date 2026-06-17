@@ -9,6 +9,7 @@ import pytest
 import respx
 
 from app.config import settings
+from app.core import scraper as scraper_module
 from app.core.models import Station
 from app.core.scraper import ScraperError, YannickScraper
 
@@ -134,6 +135,76 @@ async def test_fetch_stock_empty_on_non_ok_status():
         items = await scraper.fetch_stock("AAA111", client)
 
     assert items == []
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_fetch_stations_populates_lat_lng_from_coords_map(monkeypatch):
+    """Stations with a known tid in the static map should get lat/lng filled."""
+    monkeypatch.setattr(
+        scraper_module,
+        "_STATION_COORDS",
+        {"AAA111": (25.0353, 121.4999)},
+    )
+    respx.get(settings.service_page_url).mock(
+        return_value=httpx.Response(200, text=SERVICE_PAGE_HTML)
+    )
+
+    scraper = YannickScraper(max_concurrent=2, delay=0)
+    stations = await scraper.fetch_stations()
+
+    assert stations[0].tid == "AAA111"
+    assert stations[0].lat == pytest.approx(25.0353)
+    assert stations[0].lng == pytest.approx(121.4999)
+    # Unknown tid should fall back to None
+    assert stations[1].tid == "BBB222"
+    assert stations[1].lat is None
+    assert stations[1].lng is None
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_fetch_stations_handles_empty_coords_map(monkeypatch):
+    """When no coords are available, every station gets None lat/lng (no crash)."""
+    monkeypatch.setattr(scraper_module, "_STATION_COORDS", {})
+    respx.get(settings.service_page_url).mock(
+        return_value=httpx.Response(200, text=SERVICE_PAGE_HTML)
+    )
+
+    scraper = YannickScraper(max_concurrent=2, delay=0)
+    stations = await scraper.fetch_stations()
+
+    assert all(s.lat is None and s.lng is None for s in stations)
+
+
+def test_load_station_coords_missing_file_returns_empty(tmp_path, monkeypatch):
+    """Loader returns empty dict (not raise) when the JSON file is missing."""
+    monkeypatch.setattr(
+        scraper_module, "_STATION_COORDS_PATH", tmp_path / "does_not_exist.json"
+    )
+    assert scraper_module._load_station_coords() == {}
+
+
+def test_load_station_coords_parses_valid_pairs(tmp_path, monkeypatch):
+    """Loader returns tuples for valid [lat, lng] pairs and None for invalid entries."""
+    p = tmp_path / "coords.json"
+    p.write_text(
+        json.dumps(
+            {
+                "AAA": [25.0, 121.0],
+                "BBB": None,
+                "CCC": [22.5, 120.3],
+                "DDD": "garbage",  # invalid shape → None
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(scraper_module, "_STATION_COORDS_PATH", p)
+    coords = scraper_module._load_station_coords()
+    assert coords["AAA"] == (25.0, 121.0)
+    assert coords["BBB"] is None
+    assert coords["CCC"] == (22.5, 120.3)
+    assert coords["DDD"] is None
 
 
 @pytest.mark.asyncio

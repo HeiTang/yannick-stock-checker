@@ -20,6 +20,8 @@ class Station:
     branch_name: str  # "台北捷運據點" / "高雄捷運據點" / "門市據點"
     photo_url: str = ""
     sort: int = 0
+    lat: float | None = None  # Geocoded latitude; None if unresolved
+    lng: float | None = None  # Geocoded longitude; None if unresolved
 
 
 @dataclass(frozen=True)
