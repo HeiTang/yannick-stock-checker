@@ -60,6 +60,8 @@ class StationInfo(BaseModel):
     branch_name: str
     quantity: int
     photo_url: str = ""
+    lat: float | None = None
+    lng: float | None = None
 
 
 class ProductInfo(BaseModel):
@@ -83,6 +85,8 @@ class StationSummary(BaseModel):
     branch_code: str
     branch_name: str
     photo_url: str = ""
+    lat: float | None = None
+    lng: float | None = None
 
 
 class BranchGroup(BaseModel):
@@ -204,6 +208,8 @@ async def get_product(code: str, background_tasks: BackgroundTasks) -> Any:
             branch_name=ss.station.branch_name,
             quantity=ss.quantity,
             photo_url=ss.station.photo_url,
+            lat=ss.station.lat,
+            lng=ss.station.lng,
         )
         for ss in avail.stations
     ]
@@ -240,6 +246,8 @@ async def list_stations(background_tasks: BackgroundTasks) -> Any:
             branch_code=s.branch_code,
             branch_name=s.branch_name,
             photo_url=s.photo_url,
+            lat=s.lat,
+            lng=s.lng,
         )
         branch_map.setdefault(s.branch_code, []).append(summary)
         branch_names[s.branch_code] = s.branch_name
@@ -293,6 +301,8 @@ async def get_station(tid: str, background_tasks: BackgroundTasks) -> Any:
             branch_code=station.branch_code,
             branch_name=station.branch_name,
             photo_url=station.photo_url,
+            lat=station.lat,
+            lng=station.lng,
         ),
         stock=stock,
         total_items=sum(s.quantity for s in stock),
