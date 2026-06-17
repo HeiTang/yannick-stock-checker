@@ -280,3 +280,10 @@ def test_product_detail_last_updated_is_iso8601(client):
     assert resp.status_code == 200
     data = resp.json()
     _assert_iso8601(data.get("last_updated"), "product_detail.last_updated")
+
+
+def test_station_counts_last_updated_is_iso8601(client):
+    resp = client.get("/api/stations/counts")
+    assert resp.status_code == 200
+    data = resp.json()
+    _assert_iso8601(data.get("last_updated"), "station_counts.last_updated")
