@@ -1,0 +1,114 @@
+name: Auto-geocode station changes
+
+on:
+  schedule:
+    # Monday 04:00 UTC = Monday 12:00 Asia/Taipei
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+jobs:
+  detect-and-geocode:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Need full history so the script can be committed onto a new branch
+          fetch-depth: 0
+          ref: dev
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Detect upstream station diff
+        id: detect
+        run: |
+          PYTHONPATH=. python scripts/check_station_diff.py -o manifest.json
+          has_changes=$(python -c "import json; print(json.load(open('manifest.json'))['has_changes'])")
+          summary=$(python -c "import json; print(json.load(open('manifest.json'))['summary'])")
+          echo "has_changes=$has_changes" >> "$GITHUB_OUTPUT"
+          echo "summary=$summary" >> "$GITHUB_OUTPUT"
+          echo "Manifest summary: $summary"
+          cat manifest.json
+
+      - name: Run geocoder
+        if: steps.detect.outputs.has_changes == 'True'
+        run: PYTHONPATH=. python scripts/geocode_stations.py
+
+      - name: Refresh COORDS_REPORT.md
+        if: steps.detect.outputs.has_changes == 'True'
+        run: PYTHONPATH=. python scripts/coords_report.py
+
+      - name: Compose PR body
+        if: steps.detect.outputs.has_changes == 'True'
+        id: compose
+        run: |
+          PYTHONPATH=. python scripts/compose_pr_body.py manifest.json app/data/station_coords.json > pr_body.md
+          # Compute count of unresolved entries that touched this PR for the title.
+          # Routes through `load_coords_file` so the predicate stays consistent
+          # with the rest of the tooling regardless of on-disk schema.
+          unresolved=$(PYTHONPATH=. python - <<'PY'
+          import json
+          from pathlib import Path
+          from scripts.geocode_stations import is_resolved, load_coords_file
+          m = json.load(open('manifest.json'))
+          c = load_coords_file(Path('app/data/station_coords.json'))
+          touched = m['new'] + m['address_changed'] + m['previously_failed']
+          n = sum(1 for it in touched if not is_resolved(c.get(it['tid'])))
+          print(n)
+          PY
+          )
+          echo "unresolved=$unresolved" >> "$GITHUB_OUTPUT"
+
+      - name: Configure git
+        if: steps.detect.outputs.has_changes == 'True'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push branch
+        if: steps.detect.outputs.has_changes == 'True'
+        id: push
+        run: |
+          DATE=$(date -u +%Y%m%d)
+          BRANCH="auto/geocode-${DATE}"
+          # If the branch already exists (e.g. re-run same day), append run id
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            BRANCH="${BRANCH}-${GITHUB_RUN_ID}"
+          fi
+          git checkout -b "$BRANCH"
+          git add app/data/station_coords.json app/data/COORDS_REPORT.md
+          # `--allow-empty` is the alerting path: if upstream only *removed*
+          # stations (we don't auto-delete them), the JSON / report stay byte-
+          # identical and a normal commit would fail with "nothing to commit",
+          # silently dropping the alert. An empty commit keeps the PR flow alive.
+          git commit --allow-empty \
+            -m "chore(stations): auto-geocode upstream changes ($(date -u +%Y-%m-%d))" \
+            -m "${{ steps.detect.outputs.summary }}"
+          git push origin "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR
+        if: steps.detect.outputs.has_changes == 'True'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="🤖 auto: geocode ${{ steps.detect.outputs.summary }}"
+          if [ "${{ steps.compose.outputs.unresolved }}" != "0" ]; then
+            TITLE="$TITLE — ⚠️ ${{ steps.compose.outputs.unresolved }} unresolved"
+          fi
+          gh pr create \
+            --base dev \
+            --head "${{ steps.push.outputs.branch }}" \
+            --title "$TITLE" \
+            --body-file pr_body.md

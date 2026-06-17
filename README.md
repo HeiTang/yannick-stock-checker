@@ -7,7 +7,7 @@
 		<img src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
 		<img src="coverage.svg" alt="Coverage report" />
 	</p>
-	<img src="./.github/assets/demo-page.png" alt="Demo screenshot" />
+	<img src="./.github/assets/demo-page-2.png" alt="Demo screenshot" />
 </div>
 
 <div align="center">
@@ -26,7 +26,11 @@
 
 - **商品導向的查詢流程**：從商品出發，直接定位仍有現貨的 YTM 站點，降低逐站查找成本。
 
-- **完整掌握庫存分布與規模**：同時查看可購買站點與總庫存量，判斷購買時機更有效率。
+- **雙視角查詢，一個入口**：商品視角依商品反查站點，站點視角直接看單站在賣的口味，互相連動、互相切換。
+
+- **書籤友善的精簡查詢頁**：`/query` 是純工具頁，URL 可帶完整狀態（主題、視角、預選商品/站點）一鍵分享，回訪零步驟。
+
+- **多主題 × 淺深模式**：奶霜 / 莓果寶石 / 焦糖暖陽三色系 × 淺 / 深，記住你的選擇，下次打開照舊。
 
 - **網站與 API 並行提供**：可直接使用網頁查詢，也能整合到自建工具、通知流程或資料分析。
 
@@ -65,17 +69,38 @@
 
 4. 啟動服務
 
-	```bash
-	uvicorn app.main:app --reload --port 8080
-	```
+	1. 啟動後端 FastAPI 服務
+		
+		```bash
+		uvicorn app.main:app --reload --port 8080
+		```
+
+		> ⚠️ `--reload` 只偵測後端 Python 變動，改前端（Astro / TypeScript / CSS）仍要重跑 `npm run build`。
+
+	2. 啟動前端 Astro 服務（可選，僅開發時使用）
+
+		```bash
+		cd web
+		npm run dev
+		```
+
+		> ⚠️ Astro dev server 監聽 4321，`/api/*` 透過 `web/astro.config.mjs` 的 vite proxy 自動反代到 `:8080`。
 
 	第一次啟動會自動掃描全台站點並建立初始索引，通常約需 30 秒左右。
 
 5. 打開介面
 
-   - Web 查詢介面： [http://localhost:8080](http://localhost:8080)
+    - 如果只啟動 FastAPI，請直接打開：
 
-   - API 文件： [http://localhost:8080/docs](http://localhost:8080/docs)
+        - Web 查詢介面： [http://localhost:8080](http://localhost:8080)
+
+        - API 文件： [http://localhost:8080/docs](http://localhost:8080/docs)
+
+    - 如果同時啟動 Astro dev server，請打開：
+
+        - Web 查詢介面： [http://localhost:4321](http://localhost:4321)
+
+		- API 文件： [http://localhost:4321/docs](http://localhost:4321/docs)
 
 ### 🐳 Docker
 
@@ -119,6 +144,30 @@ docker run --rm -p 8080:8080 --env-file .env yannick-stock-checker
 | `GET` | `/api/status` | 取得目前系統狀態與更新時間 |
 
 完整 API 文件 與回應格式請直接參考 [https://yannick.purr.tw/docs](https://yannick.purr.tw/docs)。
+
+## <a id="routes"></a>🧭 路由與深連結
+
+| 路由 | 用途 |
+| --- | --- |
+| `/` | Landing：行銷介紹 + 即時統計 + 整合查詢區 + 商品牆 + API 區 + 頁尾 |
+| `/query` | Lean：純查詢工具頁，書籤友善（無行銷內容） |
+| `/docs` | FastAPI 自動產生的 Swagger UI |
+
+兩頁共享：
+- `localStorage["ytm.theme"]` — 主題（色系 + 模式）
+- `localStorage["ytm.query"]` — 查詢狀態（視角 / 商品 / 站點）
+
+URL query string 可同時帶這些狀態，書籤打開直接還原：
+
+| Param | 值 | 說明 |
+| --- | --- | --- |
+| `dir` | `cream` / `berry` / `caramel` | 主題色系 |
+| `mode` | `light` / `dark` | 外觀模式 |
+| `view` | `products` / `stations` | 查詢視角 |
+| `p` | 商品代碼或關鍵字（如 `原味`） | 商品視角預選 |
+| `s` | 站點 ID 或關鍵字（如 `龍山寺`） | 站點視角預選 |
+
+範例：[`/query?dir=berry&mode=dark&view=stations&s=龍山寺`](https://yannick.purr.tw/query?dir=berry&mode=dark&view=stations&s=%E9%BE%8D%E5%B1%B1%E5%AF%BA)
 
 ## <a id="testing"></a>🧪 測試
 
