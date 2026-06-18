@@ -37,20 +37,26 @@ export interface LandingOptions {
   pageSelector?: string;
 }
 
+let initialized = false;
+
 export async function initLanding(opts: LandingOptions = {}): Promise<void> {
+  if (initialized) return;
   const shell = document.querySelector<HTMLElement>(opts.shellSelector ?? '#yt-shell');
   const page = document.querySelector<HTMLElement>(opts.pageSelector ?? '#yt-page');
   if (!shell || !page) return;
+  initialized = true;
 
-  // Delegate [data-nav] clicks on the shell, not document — keeps the handler
-  // scoped to landing markup and prevents double-binding on re-init.
+  // Delegate [data-nav] clicks on the shell so the listener is scoped to
+  // landing markup. The idempotency guard above prevents repeat-binding
+  // if the module is ever re-initialized (HMR, accidental double call).
   shell.addEventListener('click', (e) => {
     const target = e.target;
     if (!(target instanceof Element)) return;
     const btn = target.closest<HTMLElement>('[data-nav]');
-    if (!btn) return;
+    const navId = btn?.dataset.nav;
+    if (!navId) return;
     e.preventDefault();
-    smoothNavTo(btn.dataset.nav!);
+    smoothNavTo(navId);
   });
 
   initThemeMenu({ buttonSelector: '#yt-theme-btn', page });

@@ -8,7 +8,6 @@ const title = '亞尼克・庫存雷達 · YTM Stock Radar';
 const description =
   '非官方 YTM 生乳捲庫存查詢工具：以商品為核心、即時反查全台仍有現貨的站點，並可由站點視角直接看在庫商品。';
 const canonical = new URL('/', Astro.site).href;
-const year = new Date().getFullYear();
 const apiHost = Astro.site?.host ?? 'yannick.purr.tw';
 
 const apiEndpoints = [
@@ -272,7 +271,7 @@ const apiEndpoints = [
             <div class="yt-footer-rule"></div>
             <div class="yt-footer-bottom">
               <span>本專案為非官方工具，與亞尼克無官方關聯；相關商標權利屬原權利人所有。</span>
-              <span>MIT License · © {year}</span>
+              <span>MIT License · © 2026–present</span>
             </div>
           </div>
         </footer>
