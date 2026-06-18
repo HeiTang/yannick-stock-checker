@@ -62,8 +62,13 @@ export function icon(
   name: IconName,
   opts: { size?: number; weight?: IconWeight } = {},
 ): string {
-  const size = opts.size ?? 16;
-  const weight = opts.weight ?? 'regular';
+  // 11/15 bundled paths are 'bold' weight; defaulting to 'bold' matches the
+  // overwhelming majority of call sites and avoids silent misses when a
+  // caller forgets to set weight (only `info` ships a 'regular' path).
+  const weight = opts.weight ?? 'bold';
+  // Coerce size at the boundary — TS type doesn't help JS callers.
+  const rawSize = Number(opts.size);
+  const size = Number.isFinite(rawSize) && rawSize > 0 ? Math.floor(rawSize) : 16;
   const key = `${name}-${weight}` as IconKey;
   const d = PATHS[key];
   if (!d) {

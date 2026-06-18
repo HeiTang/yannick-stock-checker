@@ -143,7 +143,9 @@ function bindWallClicks(handleGetter: () => QueryHandle): void {
   const wallEl = document.getElementById('wall-grid');
   if (!wallEl) return;
   wallEl.addEventListener('click', (e) => {
-    const card = (e.target as HTMLElement).closest<HTMLElement>('.yt-prod');
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    const card = target.closest<HTMLElement>('.yt-prod');
     if (!card) return;
     const code = card.dataset.code;
     if (!code) return;
