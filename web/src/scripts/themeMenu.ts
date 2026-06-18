@@ -29,7 +29,7 @@ function chevron(size = 13): string {
 }
 
 function check(size = 16): string {
-  return icon('check-circle', { size, weight: 'fill', color: 'var(--yt-brand)' });
+  return `<span style="color:var(--yt-brand);display:inline-flex">${icon('check-circle', { size, weight: 'fill' })}</span>`;
 }
 
 export interface ThemeMenuOptions {

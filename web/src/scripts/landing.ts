@@ -38,12 +38,16 @@ export interface LandingOptions {
 }
 
 export async function initLanding(opts: LandingOptions = {}): Promise<void> {
+  const shell = document.querySelector<HTMLElement>(opts.shellSelector ?? '#yt-shell');
   const page = document.querySelector<HTMLElement>(opts.pageSelector ?? '#yt-page');
-  if (!page) return;
+  if (!shell || !page) return;
 
-  // Smooth scroll for [data-nav="..."] buttons (header nav + hero CTAs).
-  document.addEventListener('click', (e) => {
-    const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-nav]');
+  // Delegate [data-nav] clicks on the shell, not document — keeps the handler
+  // scoped to landing markup and prevents double-binding on re-init.
+  shell.addEventListener('click', (e) => {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    const btn = target.closest<HTMLElement>('[data-nav]');
     if (!btn) return;
     e.preventDefault();
     smoothNavTo(btn.dataset.nav!);
