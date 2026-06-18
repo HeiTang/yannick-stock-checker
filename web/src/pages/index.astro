@@ -1,11 +1,24 @@
 ---
 import '../styles/query.css';
 import '../styles/landing.css';
+import { icon } from '../scripts/icon.ts';
+import { rollSwirlSvg, brandMarkSvg } from '../scripts/svg.ts';
 
 const title = '亞尼克・庫存雷達 · YTM Stock Radar';
 const description =
   '非官方 YTM 生乳捲庫存查詢工具：以商品為核心、即時反查全台仍有現貨的站點，並可由站點視角直接看在庫商品。';
 const canonical = new URL('/', Astro.site).href;
+const year = new Date().getFullYear();
+const apiHost = Astro.site?.host ?? 'yannick.purr.tw';
+
+const apiEndpoints = [
+  { m: 'GET', path: '/api/products', desc: '所有商品清單與總庫存' },
+  { m: 'GET', path: '/api/products/{code}', desc: '單一商品可購買的站點' },
+  { m: 'GET', path: '/api/stations', desc: '列出所有站點' },
+  { m: 'GET', path: '/api/stations/{tid}', desc: '單一站點的庫存內容' },
+  { m: 'POST', path: '/api/refresh', desc: '手動刷新快取與聚合' },
+  { m: 'GET', path: '/api/status', desc: '系統狀態與更新時間' },
+];
 ---
 
 <!doctype html>
@@ -52,11 +65,218 @@ const canonical = new URL('/', Astro.site).href;
           '非官方工具，與亞尼克無官方關聯；相關商標權利屬原權利人所有。',
       })}
     />
-
   </head>
   <body>
     <div class="yt-page" id="yt-page">
-      <div class="yt-shell" id="yt-shell"></div>
+      <div class="yt-shell" id="yt-shell">
+        <header class="yt-header">
+          <div class="yt-header-bar">
+            <div style="display:flex;align-items:center;gap:11px;min-width:0">
+              <Fragment set:html={brandMarkSvg(38)} />
+              <div style="line-height:1.12;min-width:0">
+                <div class="yt-wordmark">亞尼克・庫存雷達</div>
+                <div class="yt-wordmark-sub">非官方查詢工具</div>
+              </div>
+            </div>
+            <nav class="yt-nav">
+              <button class="yt-navlink" data-nav="wall" type="button">商品牆</button>
+              <button class="yt-navlink" data-nav="query" type="button">查詢</button>
+              <button class="yt-navlink" data-nav="api" type="button">API</button>
+            </nav>
+            <div style="flex:1"></div>
+            <div class="yt-updated">
+              <span class="yt-pulse"></span>
+              <span>即時 <span id="updated-at">--:--</span></span>
+            </div>
+            <div class="yt-quick">
+              <a href="/query" aria-label="快速查詢">
+                <Fragment set:html={icon('magnifying-glass', { size: 15, weight: 'bold' })} />
+                <span>快速查詢</span>
+              </a>
+            </div>
+            <div class="yt-theme">
+              <button
+                class="yt-theme-btn"
+                id="yt-theme-btn"
+                type="button"
+                aria-haspopup="true"
+                aria-expanded="false"
+                aria-label="主題與外觀"
+                title="主題與外觀"
+              ></button>
+            </div>
+          </div>
+        </header>
+
+        <section class="yt-hero">
+          <div class="yt-bleed" aria-hidden="true">
+            <span class="yt-bleed-a"></span>
+            <span class="yt-bleed-b"></span>
+          </div>
+          <div class="yt-hero-grid">
+            <div class="yt-hero-copy">
+              <div class="yt-eyebrow">
+                <span class="yt-eyebrow-dot"></span>
+                <span>非官方 · 全台 YTM 生乳捲庫存</span>
+              </div>
+              <h1 class="yt-h1">哪裡<br /><span class="yt-h1-accent">還有貨</span>？</h1>
+              <p class="yt-lede">
+                以商品為核心、即時反查全台仍有現貨的 YTM 站點。開啟定位，依距離排序，先看最近能買到的生乳捲。
+              </p>
+              <div class="yt-hero-cta">
+                <button class="yt-btn yt-btn--primary" data-nav="query" type="button">
+                  <Fragment set:html={icon('magnifying-glass', { size: 16, weight: 'bold' })} />
+                  <span>開始查庫存</span>
+                </button>
+                <button class="yt-btn yt-btn--glass" data-nav="wall" type="button">
+                  <Fragment set:html={icon('cards', { size: 16, weight: 'bold' })} />
+                  <span>看商品牆</span>
+                </button>
+              </div>
+              <div class="yt-hero-meta">
+                <span>台北捷運</span><span class="yt-dot"></span>
+                <span>高雄捷運</span><span class="yt-dot"></span>
+                <span>門市據點</span>
+              </div>
+            </div>
+            <div class="yt-hero-visual">
+              <div class="yt-hero-card">
+                <div class="yt-hero-card-head">
+                  <div>
+                    <div class="yt-hero-card-kicker">即時庫存快照</div>
+                    <div class="yt-hero-card-time">最後更新 <span id="hero-updated">--:--</span></div>
+                  </div>
+                  <span class="yt-badge-soft">即時</span>
+                </div>
+                <div class="yt-hero-swirl">
+                  <Fragment set:html={rollSwirlSvg(132)} />
+                  <div>
+                    <div class="yt-hero-bignum-v" id="hero-inventory">—</div>
+                    <div class="yt-hero-bignum-l">條生乳捲・全台在庫</div>
+                  </div>
+                </div>
+                <div class="yt-hero-list" id="hero-top-products"></div>
+              </div>
+            </div>
+          </div>
+          <div class="yt-stats">
+            <div class="yt-stat">
+              <div class="yt-stat-top">
+                <Fragment set:html={icon('cards', { size: 16, weight: 'bold' })} />
+                <span>有貨商品</span>
+              </div>
+              <div class="yt-stat-num"><span id="stat-products">—</span><span class="yt-stat-suffix">款</span></div>
+            </div>
+            <div class="yt-stat">
+              <div class="yt-stat-top">
+                <Fragment set:html={icon('map-pin', { size: 16, weight: 'bold' })} />
+                <span>可查站點</span>
+              </div>
+              <div class="yt-stat-num"><span id="stat-stations">—</span><span class="yt-stat-suffix">處</span></div>
+            </div>
+            <div class="yt-stat">
+              <div class="yt-stat-top">
+                <Fragment set:html={icon('barcode', { size: 16, weight: 'bold' })} />
+                <span>全台總庫存</span>
+              </div>
+              <div class="yt-stat-num"><span id="stat-inventory">—</span><span class="yt-stat-suffix">條</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="yt-section" id="query">
+          <div id="query-console"></div>
+        </section>
+
+        <section class="yt-section" id="wall">
+          <div class="yt-section-head">
+            <div>
+              <div class="yt-kicker">商品牆</div>
+              <h2 class="yt-h2">今天哪一款生乳捲在線上</h2>
+            </div>
+            <p class="yt-section-sub">
+              原味、紅寶石覆盆莓、抹茶到限定盲盒 — 點任一款即可反查全台站點。
+            </p>
+          </div>
+          <div class="yt-wall-grid" id="wall-grid"></div>
+        </section>
+
+        <section class="yt-section" id="api">
+          <div class="yt-api-grid">
+            <div class="yt-api-copy">
+              <div class="yt-kicker">For Developers</div>
+              <h2 class="yt-h2">網站與 API 並行提供</h2>
+              <p class="yt-section-sub" style="max-width:40ch">
+                同一個服務入口同時提供網頁查詢與 JSON API，可整合到自建工具、通知流程或資料分析。內建快取、限流與重試，兼顧速度與來源友善度。
+              </p>
+              <div class="yt-api-feats">
+                <div class="yt-api-feat"><span class="yt-api-feat-dot"></span>快取 600s</div>
+                <div class="yt-api-feat"><span class="yt-api-feat-dot"></span>限流保護</div>
+                <div class="yt-api-feat"><span class="yt-api-feat-dot"></span>自動重試</div>
+              </div>
+              <div class="yt-api-cta">
+                <a class="yt-btn yt-btn--primary" href="/docs" target="_blank" rel="noopener">
+                  <Fragment set:html={icon('link', { size: 16, weight: 'bold' })} />
+                  <span>查看 API 文件</span>
+                </a>
+                <a
+                  class="yt-btn yt-btn--glass"
+                  href="https://github.com/HeiTang/yannick-stock-checker"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <Fragment set:html={icon('github-logo', { size: 16, weight: 'bold' })} />
+                  <span>GitHub</span>
+                </a>
+              </div>
+            </div>
+            <div class="yt-api-card">
+              <div class="yt-api-card-bar">
+                <span class="yt-tl" style="background:#FF5F57"></span>
+                <span class="yt-tl" style="background:#FEBC2E"></span>
+                <span class="yt-tl" style="background:#28C840"></span>
+                <span class="yt-api-host">{apiHost}</span>
+              </div>
+              <div class="yt-api-rows">
+                {
+                  apiEndpoints.map((e) => (
+                    <div class="yt-api-row">
+                      <span class="yt-method" data-m={e.m}>{e.m}</span>
+                      <code class="yt-path">{e.path}</code>
+                      <span class="yt-api-desc">{e.desc}</span>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <footer class="yt-footer">
+          <div class="yt-footer-card">
+            <div class="yt-footer-top">
+              <div style="display:flex;align-items:center;gap:12px">
+                <Fragment set:html={brandMarkSvg(40)} />
+                <div style="line-height:1.2">
+                  <div class="yt-wordmark">亞尼克・庫存雷達</div>
+                  <div class="yt-wordmark-sub">以商品為核心，快速定位現貨站點</div>
+                </div>
+              </div>
+              <nav class="yt-footer-links">
+                <a href="#wall">商品牆</a>
+                <a href="#query">查詢</a>
+                <a href="/docs" target="_blank" rel="noopener">API 文件</a>
+                <a href="https://github.com/HeiTang/yannick-stock-checker" target="_blank" rel="noopener">GitHub</a>
+              </nav>
+            </div>
+            <div class="yt-footer-rule"></div>
+            <div class="yt-footer-bottom">
+              <span>本專案為非官方工具，與亞尼克無官方關聯；相關商標權利屬原權利人所有。</span>
+              <span>MIT License · © {year}</span>
+            </div>
+          </div>
+        </footer>
+      </div>
     </div>
 
     <script>
