@@ -1,5 +1,6 @@
 ---
 import '../styles/query.css';
+import { icon } from '../scripts/icon.ts';
 
 const title = '快速查庫存 · 亞尼克・庫存雷達';
 const description =
@@ -32,18 +33,6 @@ const canonical = new URL('/query', Astro.site).href;
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css"
-    />
   </head>
   <body>
     <div class="yt-page" id="yt-page">
@@ -64,7 +53,7 @@ const canonical = new URL('/query', Astro.site).href;
           </div>
 
           <a class="yt-back" href="/">
-            <i class="ph-bold ph-info" style="font-size:15px"></i>
+            <Fragment set:html={icon('info', { size: 15, weight: 'bold' })} />
             <span>關於</span>
           </a>
 

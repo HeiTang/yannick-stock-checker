@@ -12,6 +12,7 @@ import {
   type ThemeKey,
   type ThemeMode,
 } from './theme.ts';
+import { icon } from './icon.ts';
 
 function swatchHtml(key: ThemeKey, sz: 'sm' | 'lg' = 'sm'): string {
   const d = DIRECTIONS[key];
@@ -20,15 +21,15 @@ function swatchHtml(key: ThemeKey, sz: 'sm' | 'lg' = 'sm'): string {
 }
 
 function modeIcon(mode: ThemeMode, size = 14): string {
-  return `<i class="ph-bold ph-${mode === 'dark' ? 'moon' : 'sun'}" style="font-size:${size}px"></i>`;
+  return icon(mode === 'dark' ? 'moon' : 'sun', { size, weight: 'bold' });
 }
 
 function chevron(size = 13): string {
-  return `<i class="ph-bold ph-caret-down" style="font-size:${size}px;opacity:0.6"></i>`;
+  return `<span style="display:inline-flex;opacity:0.6">${icon('caret-down', { size, weight: 'bold' })}</span>`;
 }
 
 function check(size = 16): string {
-  return `<i class="ph-fill ph-check-circle" style="font-size:${size}px;color:var(--yt-brand)"></i>`;
+  return icon('check-circle', { size, weight: 'fill', color: 'var(--yt-brand)' });
 }
 
 export interface ThemeMenuOptions {
