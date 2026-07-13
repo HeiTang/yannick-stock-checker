@@ -1,10 +1,10 @@
 # Station coords report
 
-Total: **86** · ✅ 86 · 🔍 0 out-of-bbox · ❌ 0 unresolved
+Total: **87** · ✅ 87 · 🔍 0 out-of-bbox · ❌ 0 unresolved
 
 Bbox used: lat ∈ [21.5, 26.5], lng ∈ [118.5, 122.5]
 
-## ✅ Resolved (86)
+## ✅ Resolved (87)
 
 | 站點 | 地址 | 座標 | 地圖 |
 |---|---|---|---|
@@ -27,6 +27,7 @@ Bbox used: lat ∈ [21.5, 26.5], lng ∈ [118.5, 122.5]
 | 中和新蘆線-頂溪站 | 234016新北市永和區永和路2段168號B1 | 25.01264, 121.51532 | [Maps](https://www.google.com/maps/search/?api=1&query=25.012643,121.515315) · [OSM](https://www.openstreetmap.org/?mlat=25.012643&mlon=121.515315&zoom=17) |
 | 內湖旗艦店 | 台北市內湖區瑞湖街178巷15號 | 25.07086, 121.57586 | [Maps](https://www.google.com/maps/search/?api=1&query=25.0708642,121.5758644) · [OSM](https://www.openstreetmap.org/?mlat=25.0708642&mlon=121.5758644&zoom=17) |
 | 台中崇德店 | 台中市北區崇德路一段482號 | 23.80721, 120.71731 | [Maps](https://www.google.com/maps/search/?api=1&query=23.8072091,120.7173081) · [OSM](https://www.openstreetmap.org/?mlat=23.8072091&mlon=120.7173081&zoom=17) |
+| 台中旗艦店 | 台中市五權西四街120號 | 25.04541, 121.50486 | [Maps](https://www.google.com/maps/search/?api=1&query=25.0454081,121.5048628) · [OSM](https://www.openstreetmap.org/?mlat=25.0454081&mlon=121.5048628&zoom=17) |
 | 台北西門店 | 台北市萬華區成都路18號 | 25.04362, 121.50525 | [Maps](https://www.google.com/maps/search/?api=1&query=25.043617,121.5052541) · [OSM](https://www.openstreetmap.org/?mlat=25.043617&mlon=121.5052541&zoom=17) |
 | 屏東仁愛店 | 屏東縣屏東市仁愛路14之16號 | 22.68100, 120.49620 | [Maps](https://www.google.com/maps/search/?api=1&query=22.681,120.4962) · [OSM](https://www.openstreetmap.org/?mlat=22.681&mlon=120.4962&zoom=17) |
 | 文湖線-科技大樓站 | 106101臺北市大安區復興南路2段235號 | 25.02615, 121.54355 | [Maps](https://www.google.com/maps/search/?api=1&query=25.0261473,121.5435476) · [OSM](https://www.openstreetmap.org/?mlat=25.0261473&mlon=121.5435476&zoom=17) |
