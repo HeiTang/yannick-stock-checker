@@ -12,6 +12,7 @@ import { initThemeMenu } from './themeMenu.ts';
 import { formatTimestamp, escapeHtml } from './utils.ts';
 import { rollSwirlSvg } from './svg.ts';
 import { icon } from './icon.ts';
+import { track } from './analytics.ts';
 
 interface StatusResponse {
   last_updated: string | null;
@@ -52,9 +53,15 @@ export async function initLanding(opts: LandingOptions = {}): Promise<void> {
   shell.addEventListener('click', (e) => {
     const target = e.target;
     if (!(target instanceof Element)) return;
+    const tracked = target.closest<HTMLElement>('[data-track]')?.dataset.track;
+    if (tracked) track('button_click', { button_name: tracked, button_area: 'api' });
     const btn = target.closest<HTMLElement>('[data-nav]');
     const navId = btn?.dataset.nav;
     if (!navId) return;
+    track('button_click', {
+      button_name: navId,
+      button_area: btn.closest('.yt-hero-cta') ? 'hero' : 'navigation',
+    });
     e.preventDefault();
     smoothNavTo(navId);
   });
@@ -155,6 +162,12 @@ function bindWallClicks(handleGetter: () => QueryHandle): void {
     if (!card) return;
     const code = card.dataset.code;
     if (!code) return;
+    track('query_completed', {
+      query_type: 'product',
+      query_item_id: code,
+      query_source: 'product_wall',
+      used_search: false,
+    });
     handleGetter().pickProduct(code);
     smoothNavTo('query');
   });

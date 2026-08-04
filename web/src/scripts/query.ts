@@ -6,6 +6,7 @@
 import { accentFor, flavorOf, type ProductSummary } from './products.ts';
 import { icon } from './icon.ts';
 import { escapeHtml } from './utils.ts';
+import { track } from './analytics.ts';
 
 interface StationInfo {
   station_id: string;
@@ -598,6 +599,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       const v = btn.dataset.view as ViewMode;
       if (v === state.view) return;
       state.view = v;
+      track('button_click', { button_name: `view_${v}`, button_area: 'query' });
       state.keyword = '';
       $input.value = '';
       persistState();
@@ -635,6 +637,12 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     if (!btn) return;
     const code = btn.dataset.code;
     const tid = btn.dataset.tid;
+    track('query_completed', {
+      query_type: code ? 'product' : 'station',
+      query_item_id: code ?? tid ?? '',
+      query_source: 'result_list',
+      used_search: Boolean(state.keyword.trim()),
+    });
     if (code) state.pickedProduct = code;
     if (tid) state.pickedStation = tid;
     state.focused = false;
@@ -658,7 +666,15 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     const pickBtn = target.closest<HTMLButtonElement>('[data-pick-product]');
     if (pickBtn) {
       const code = pickBtn.dataset.pickProduct;
-      if (code) pickProductInternal(code);
+      if (code) {
+        track('query_completed', {
+          query_type: 'product',
+          query_item_id: code,
+          query_source: 'station_detail',
+          used_search: false,
+        });
+        pickProductInternal(code);
+      }
     }
   });
 
@@ -674,6 +690,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
 
   function toggleLocate() {
     if (state.located) {
+      track('button_click', { button_name: 'location_disable', button_area: 'query' });
       state.located = false;
       userPos = null;
       persistState();
@@ -681,9 +698,11 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       return;
     }
     if (!('geolocation' in navigator)) {
+      track('location_result', { location_success: false, location_reason: 'unsupported' });
       alert('此瀏覽器不支援定位');
       return;
     }
+    track('button_click', { button_name: 'location_enable', button_area: 'query' });
     isLocating = true;
     renderAll();
     navigator.geolocation.getCurrentPosition(
@@ -691,11 +710,16 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         state.located = true;
         isLocating = false;
+        track('location_result', { location_success: true });
         persistState();
         renderAll();
       },
       () => {
         isLocating = false;
+        track('location_result', {
+          location_success: false,
+          location_reason: 'denied_or_unavailable',
+        });
         alert('無法取得定位');
         renderAll();
       },
