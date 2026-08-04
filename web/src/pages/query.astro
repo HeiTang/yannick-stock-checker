@@ -1,6 +1,7 @@
 ---
 import '../styles/query.css';
 import { icon } from '../scripts/icon.ts';
+import GoogleAnalytics from '../components/GoogleAnalytics.astro';
 
 const title = '快速查庫存 · 亞尼克・庫存雷達';
 const description =
@@ -13,6 +14,7 @@ const canonical = new URL('/query', Astro.site).href;
 <!doctype html>
 <html lang="zh-Hant">
   <head>
+    <GoogleAnalytics />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
@@ -83,6 +85,7 @@ const canonical = new URL('/query', Astro.site).href;
     </div>
 
     <script>
+      import { STATUS_REFRESH_INTERVAL_MS } from '../config.ts';
       import { initQueryConsole } from '../scripts/query.ts';
       import { initThemeMenu } from '../scripts/themeMenu.ts';
       import { formatTimestamp } from '../scripts/utils.ts';
@@ -113,7 +116,7 @@ const canonical = new URL('/query', Astro.site).href;
       document.addEventListener('DOMContentLoaded', () => {
         initQueryConsole({ rootSelector: '#query-console', persist: true, lean: true });
         syncUpdatedAt();
-        setInterval(syncUpdatedAt, 5 * 60 * 1000);
+        setInterval(syncUpdatedAt, STATUS_REFRESH_INTERVAL_MS);
       });
     </script>
   </body>
