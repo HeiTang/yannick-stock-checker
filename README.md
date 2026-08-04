@@ -118,6 +118,9 @@ docker run --rm -p 8080:8080 --env-file .env yannick-stock-checker
 
 | 變數 | 預設值 | 說明 |
 | --- | --- | --- |
+| `YANNICK_BASE_URL` | `https://www.yannick.com.tw` | 亞尼克上游站台 URL |
+| `SERVICE_PAGE_PATH` | `/ytm/service2` | YTM 站點頁路徑 |
+| `STOCK_API_PATH` | `/_zh-cht/ajaxTYTMStock.ashx` | YTM 庫存 API 路徑 |
 | `CACHE_TTL_SECONDS` | `600` | 快取有效期（秒） |
 | `MAX_CONCURRENT_REQUESTS` | `5` | 最大併發請求數 |
 | `REQUEST_DELAY_SECONDS` | `0.2` | 每次請求間隔（秒） |
@@ -129,6 +132,8 @@ docker run --rm -p 8080:8080 --env-file .env yannick-stock-checker
 | `HOST` | `0.0.0.0` | Server 綁定主機 |
 | `PORT` | `8080` | Server 監聽埠 |
 | `LOG_LEVEL` | `INFO` | 應用程式日誌等級 |
+| `CORS_ORIGINS` | `*` | 允許的跨來源網址，多個值以逗號分隔 |
+| `CORS_ALLOW_CREDENTIALS` | `false` | 是否允許跨來源憑證；啟用時不可搭配 `*` |
 
 完整範例請見 [.env.example](.env.example)。若沒有特殊需求，保留預設值即可！
 
