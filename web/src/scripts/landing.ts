@@ -19,6 +19,7 @@ interface StatusResponse {
   station_count: number;
   product_count: number;
   total_stock_items: number;
+  cache_ttl_seconds: number;
 }
 
 function smoothNavTo(id: string): void {
@@ -101,6 +102,7 @@ async function loadHeroAndWall(): Promise<void> {
     setText('stat-products', String(status.product_count));
     setText('stat-stations', String(status.station_count));
     setText('stat-inventory', status.total_stock_items.toLocaleString('zh-TW'));
+    setText('api-cache-ttl', `${status.cache_ttl_seconds}s`);
 
     const top = [...products]
       .sort((a, b) => b.available_stations - a.available_stations)

@@ -7,6 +7,7 @@ import { accentFor, flavorOf, type ProductSummary } from './products.ts';
 import { icon } from './icon.ts';
 import { escapeHtml } from './utils.ts';
 import { track } from './analytics.ts';
+import { GEOLOCATION_OPTIONS } from '../config.ts';
 
 interface StationInfo {
   station_id: string;
@@ -723,7 +724,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         alert('無法取得定位');
         renderAll();
       },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
+      GEOLOCATION_OPTIONS,
     );
   }
 
@@ -735,4 +736,3 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     pickProduct: pickProductInternal,
   };
 }
-

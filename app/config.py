@@ -1,5 +1,6 @@
 """Application configuration via environment variables."""
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -27,6 +28,10 @@ class Settings(BaseSettings):
     port: int = 8080
     log_level: str = "INFO"
 
+    # ── CORS ─────────────────────────────────────────────────
+    cors_origins: str = "*"
+    cors_allow_credentials: bool = False
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     # ── Computed ─────────────────────────────────────────────
@@ -37,6 +42,18 @@ class Settings(BaseSettings):
     @property
     def stock_api_url(self) -> str:
         return f"{self.yannick_base_url}{self.stock_api_path}"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [
+            origin.strip() for origin in self.cors_origins.split(",") if origin.strip()
+        ]
+
+    @model_validator(mode="after")
+    def validate_cors(self) -> "Settings":
+        if self.cors_allow_credentials and "*" in self.cors_origin_list:
+            raise ValueError("CORS_ALLOW_CREDENTIALS requires explicit CORS_ORIGINS")
+        return self
 
 
 settings = Settings()
