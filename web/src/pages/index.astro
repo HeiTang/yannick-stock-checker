@@ -3,6 +3,7 @@ import '../styles/query.css';
 import '../styles/landing.css';
 import { icon } from '../scripts/icon.ts';
 import { rollSwirlSvg, brandMarkSvg } from '../scripts/svg.ts';
+import GoogleAnalytics from '../components/GoogleAnalytics.astro';
 
 const title = '亞尼克・庫存雷達 · YTM Stock Radar';
 const description =
@@ -23,6 +24,7 @@ const apiEndpoints = [
 <!doctype html>
 <html lang="zh-Hant">
   <head>
+    <GoogleAnalytics />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
@@ -214,7 +216,13 @@ const apiEndpoints = [
                 <div class="yt-api-feat"><span class="yt-api-feat-dot"></span>自動重試</div>
               </div>
               <div class="yt-api-cta">
-                <a class="yt-btn yt-btn--primary" href="/docs" target="_blank" rel="noopener">
+                <a
+                  class="yt-btn yt-btn--primary"
+                  href="/docs"
+                  target="_blank"
+                  rel="noopener"
+                  data-track="api_docs"
+                >
                   <Fragment set:html={icon('link', { size: 16, weight: 'bold' })} />
                   <span>查看 API 文件</span>
                 </a>
@@ -223,6 +231,7 @@ const apiEndpoints = [
                   href="https://github.com/HeiTang/yannick-stock-checker"
                   target="_blank"
                   rel="noopener"
+                  data-track="github"
                 >
                   <Fragment set:html={icon('github-logo', { size: 16, weight: 'bold' })} />
                   <span>GitHub</span>

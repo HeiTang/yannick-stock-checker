@@ -1,0 +1,25 @@
+---
+import { GA_MEASUREMENT_ID, SITE_HOSTNAME } from '../config.ts';
+---
+
+<script
+  is:inline
+  define:vars={{ hostname: SITE_HOSTNAME, measurementId: GA_MEASUREMENT_ID }}
+>
+  if (window.location.hostname === hostname) {
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function gtag() {
+      window.dataLayer.push(arguments);
+    };
+    window.gtag('js', new Date());
+    window.gtag('config', measurementId, {
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false,
+    });
+
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+    document.head.appendChild(script);
+  }
+</script>
