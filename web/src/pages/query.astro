@@ -7,6 +7,7 @@ const title = '快速查庫存 · 亞尼克・庫存雷達';
 const description =
   '亞尼克・庫存雷達快速查詢頁：商品 / 站點雙視角，搜尋＋定位排序，書籤可分享、回訪零步驟。';
 const canonical = new URL('/query/', Astro.site).href;
+const ogImage = new URL('/og-image.jpg', Astro.site).href;
 ---
 
 <!doctype html>
@@ -29,11 +30,17 @@ const canonical = new URL('/query/', Astro.site).href;
     <meta property="og:url" content={canonical} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1731" />
+    <meta property="og:image:height" content="909" />
+    <meta property="og:image:alt" content="Pixel 風格的生乳捲庫存查詢介面插畫" />
 
     <!-- Twitter Card (Twitter / X) -->
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content="Pixel 風格的生乳捲庫存查詢介面插畫" />
   </head>
   <body>
     <div class="yt-page" id="yt-page">
