@@ -6,9 +6,7 @@ import GoogleAnalytics from '../components/GoogleAnalytics.astro';
 const title = '快速查庫存 · 亞尼克・庫存雷達';
 const description =
   '亞尼克・庫存雷達快速查詢頁：商品 / 站點雙視角，搜尋＋定位排序，書籤可分享、回訪零步驟。';
-// Always canonicalise to the bare /query path; the theme / view query
-// parameters are state, not separate pages, and shouldn't dilute indexing.
-const canonical = new URL('/query', Astro.site).href;
+const canonical = new URL('/query/', Astro.site).href;
 ---
 
 <!doctype html>

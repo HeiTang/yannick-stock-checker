@@ -36,5 +36,6 @@ COPY app/ ./app/
 # Copy built static files from Stage 1 into the target directory that main.py expects
 COPY --from=frontend-builder /build/dist ./web/dist
 
-# Ensure the app runs on the assigned Cloud Run PORT ($PORT)
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}
+# Cloud Run terminates TLS before this container. Trust its forwarded scheme so
+# StaticFiles keeps HTTPS when it adds a directory trailing slash.
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --proxy-headers --forwarded-allow-ips="*"
