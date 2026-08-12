@@ -9,7 +9,13 @@ export default defineConfig({
   // og:url / og:image absolute paths in the page heads.
   site: SITE_URL,
 
-  integrations: [sitemap()],
+  integrations: [
+    sitemap({
+      // The homepage contains the complete query experience. Keep the lean
+      // utility route usable without asking search engines to index a duplicate.
+      filter: (page) => page !== new URL('/query/', SITE_URL).href,
+    }),
+  ],
 
   vite: {
     server: {
