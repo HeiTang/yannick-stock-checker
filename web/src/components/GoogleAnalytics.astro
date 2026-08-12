@@ -17,9 +17,39 @@ import { GA_MEASUREMENT_ID, SITE_HOSTNAME } from '../config.ts';
       allow_ad_personalization_signals: false,
     });
 
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
-    document.head.appendChild(script);
+    let loaded = false;
+    const loadGoogleAnalytics = () => {
+      if (loaded) return;
+      loaded = true;
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+      document.head.appendChild(script);
+    };
+
+    // Keep the initial render free of gtag's 169 KB request. The dataLayer
+    // already queues the page view and any early events until this loads.
+    const scheduleGoogleAnalytics = () => {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(loadGoogleAnalytics, { timeout: 2000 });
+      } else {
+        window.setTimeout(loadGoogleAnalytics, 0);
+      }
+    };
+
+    if (document.readyState === 'complete') {
+      scheduleGoogleAnalytics();
+    } else {
+      window.addEventListener('load', scheduleGoogleAnalytics, { once: true });
+    }
+    window.addEventListener('pointerdown', loadGoogleAnalytics, { once: true, passive: true });
+    window.addEventListener('keydown', loadGoogleAnalytics, { once: true });
   }
+</script>
+
+<script>
+  import { SITE_HOSTNAME } from '../config.ts';
+  import { observeLcp } from '../scripts/webVitals.ts';
+
+  if (window.location.hostname === SITE_HOSTNAME) observeLcp();
 </script>
