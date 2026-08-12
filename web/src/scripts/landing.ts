@@ -128,7 +128,7 @@ async function loadHeroAndWall(): Promise<void> {
           const accent = accentFor(p.product_name);
           return `
         <button class="yt-prod" type="button" data-code="${escapeHtml(p.commodity_code)}"
-                style="--pc:${accent}">
+                style="--pc:${accent}" aria-label="${escapeHtml(p.product_name)} 查站點">
           <div class="yt-prod-top">
             <div class="yt-prod-emblem">${rollSwirlSvg(64, accent, '#fff')}</div>
             <span class="yt-prod-badge">${p.available_stations} 站有貨</span>
