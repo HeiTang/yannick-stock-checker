@@ -1,10 +1,10 @@
 # Station coords report
 
-Total: **87** · ✅ 87 · 🔍 0 out-of-bbox · ❌ 0 unresolved
+Total: **88** · ✅ 88 · 🔍 0 out-of-bbox · ❌ 0 unresolved
 
 Bbox used: lat ∈ [21.5, 26.5], lng ∈ [118.5, 122.5]
 
-## ✅ Resolved (87)
+## ✅ Resolved (88)
 
 | 站點 | 地址 | 座標 | 地圖 |
 |---|---|---|---|
@@ -95,3 +95,4 @@ Bbox used: lat ∈ [21.5, 26.5], lng ∈ [118.5, 122.5]
 | 紅線-楠梓科技園區站 | 高雄市楠梓區加昌路598號(紅線R19/穿堂走道靠近1號出入口) | 22.71871, 120.30717 | [Maps](https://www.google.com/maps/search/?api=1&query=22.7187124,120.3071682) · [OSM](https://www.openstreetmap.org/?mlat=22.7187124&mlon=120.3071682&zoom=17) |
 | 紅線-獅甲站 | 高雄市前鎮區中山三路150號B1(紅線R7/近3號出入口) | 22.60618, 120.30788 | [Maps](https://www.google.com/maps/search/?api=1&query=22.6061802,120.3078782) · [OSM](https://www.openstreetmap.org/?mlat=22.6061802&mlon=120.3078782&zoom=17) |
 | 紅線-生態園區站 | 高雄市左營區博愛三路435號B1(紅線R15/穿堂走道靠近1號出入口) | 22.67646, 120.30634 | [Maps](https://www.google.com/maps/search/?api=1&query=22.6764628,120.3063428) · [OSM](https://www.openstreetmap.org/?mlat=22.6764628&mlon=120.3063428&zoom=17) |
+| 高雄苓雅店 | 高雄市苓雅區青年二路89號 | 22.61498, 120.30228 | [Maps](https://www.google.com/maps/search/?api=1&query=22.6149806,120.3022814) · [OSM](https://www.openstreetmap.org/?mlat=22.6149806&mlon=120.3022814&zoom=17) |
