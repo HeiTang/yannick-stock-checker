@@ -34,9 +34,10 @@ Output JSON shape (rich)::
       }
     }
 
-Coordinates are also checked against a conservative Taiwan bounding box
-after resolving; out-of-range results are logged as warnings so the
-geocoder doesn't silently introduce nonsense.
+Candidates must match the municipality and either the exact house address
+or the named subway station. Out-of-range or ambiguous hits are rejected.
+Automatic candidates retain their source and precision but are not marked
+as independently verified.
 """
 
 from __future__ import annotations
@@ -44,6 +45,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import re
 import sys
 from datetime import date
@@ -66,6 +68,15 @@ OUTPUT_PATH = Path("app/data/station_coords.json")
 BRANCH_TPE_MRT = "001"
 BRANCH_KHH_MRT = "002"
 BRANCH_STORE = "003"
+LINE_PREFIXES = {
+    "板南線": "BL",
+    "文湖線": "BR",
+    "淡水信義線": "R",
+    "松山新店線": "G",
+    "中和新蘆線": "O",
+    "環狀線": "Y",
+    "紅線": "R",
+}
 
 # Conservative Taiwan bounding box (covers main island + Penghu / outlying).
 # Anything outside this is almost certainly a geocoding mistake.
@@ -88,10 +99,11 @@ def queries_for(station: Station) -> list[str]:
 
     * MRT stations: query "捷運{stem}站" — matches OSM's station landmarks.
       Names look like "板南線-龍山寺站"; we strip the line prefix.
-    * 門市: try the store name (it often appears in OSM POIs), then the
-      address with floor/exit parentheticals stripped.
+    * Try the address with floor/exit notes stripped first, then a
+      municipality-qualified subway name or branded store name.
     """
     queries: list[str] = []
+    city = municipality(station.address)
 
     if station.branch_code in (BRANCH_TPE_MRT, BRANCH_KHH_MRT):
         # "板南線-龍山寺站" -> "龍山寺"
@@ -99,11 +111,8 @@ def queries_for(station: Station) -> list[str]:
         if stem.endswith("站"):
             stem = stem[:-1]
         if stem:
-            queries.append(f"捷運{stem}站")
-            queries.append(f"{stem}站")  # fallback if MRT prefix unavailable
-    else:
-        # Store: full name first ("亞尼克內湖旗艦店" sometimes indexed)
-        queries.append(station.name)
+            queries.append(f"{city} 捷運{stem}站")
+            queries.append(f"{city} {stem}站")
 
     if station.address:
         # Drop floor/exit notes: "...18號 1F" or "(出口5置物櫃旁)"
@@ -111,20 +120,109 @@ def queries_for(station: Station) -> list[str]:
         # Drop trailing floor markers like " B1", " 1F"
         addr = re.sub(r"\s*[Bb1-9]\d*[FfLl]?$", "", addr).strip()
         if addr and addr not in queries:
-            queries.append(addr)
+            queries.insert(0, addr)
+
+    if station.branch_code == BRANCH_STORE:
+        queries.append(f"{city} 亞尼克 {station.name}")
 
     return queries
 
 
+def normalize_address(value: str) -> str:
+    value = re.sub(r"\s+", "", value).replace("台", "臺").replace("之", "-")
+    for number, digit in zip("一二三四五六七八九", "123456789", strict=True):
+        value = value.replace(f"{number}段", f"{digit}段")
+    return value
+
+
+def municipality(address: str) -> str:
+    match = re.match(r"\d*([^\d]{2,3}[縣市])", normalize_address(address))
+    return match[1] if match else ""
+
+
+def matched_candidate(candidate: dict, station: Station) -> dict | None:
+    """Fail closed: a Taiwan hit alone is not evidence of the requested site."""
+    address = candidate.get("address")
+    if not isinstance(address, dict):
+        return None
+    city = municipality(station.address)
+    if not city or city not in {
+        normalize_address(str(address.get(key, "")))
+        for key in ("city", "county", "state")
+    }:
+        return None
+    try:
+        if any(isinstance(candidate.get(key), bool) for key in ("lat", "lon")):
+            return None
+        lat, lng = float(candidate["lat"]), float(candidate["lon"])
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return None
+    if not is_in_taiwan(lat, lng):
+        return None
+
+    if station.branch_code in (BRANCH_TPE_MRT, BRANCH_KHH_MRT):
+        expected = normalize_address(station.name.split("-", 1)[-1]).removesuffix("站")
+        name = normalize_address(str(candidate.get("name", "")))
+        name = name.removeprefix("捷運").removesuffix("站")
+        tags = candidate.get("extratags") or {}
+        line = LINE_PREFIXES.get(station.name.split("-", 1)[0])
+        if (
+            name != expected
+            or candidate.get("class", candidate.get("category")) != "railway"
+            or not isinstance(tags, dict)
+            or not (tags.get("station") == "subway" or tags.get("subway") == "yes")
+            or not line
+            or not re.search(rf"(?<![A-Z]){line}\d+", str(tags.get("ref", "")))
+        ):
+            return None
+        precision = "station"
+    elif station.branch_code == BRANCH_STORE:
+        # Exact street/house number, not a city/road centroid or a fuzzy shop hit.
+        expected = normalize_address(re.split(r"[(（]", station.address)[0])
+        expected = re.sub(r"^\d*" + re.escape(city), "", expected)
+        district = re.match(r"^[^\d]{1,4}?[區鄉鎮市]", expected)
+        if district:
+            if district[0] not in {
+                normalize_address(str(address.get(key, "")))
+                for key in ("suburb", "city_district", "town", "district")
+            }:
+                return None
+            expected = expected[len(district[0]) :]
+        expected = re.sub(r"[Bb]\d+.*$|\d+[Ff].*$", "", expected)
+        road = normalize_address(str(address.get("road", "")))
+        house = normalize_address(str(address.get("house_number", ""))).removesuffix(
+            "號"
+        )
+        if not road or not house or expected != f"{road}{house}號":
+            return None
+        precision = "address"
+    else:
+        return None
+
+    osm_type, osm_id = candidate.get("osm_type"), candidate.get("osm_id")
+    if osm_type not in ("node", "way", "relation") or not str(osm_id).isdigit():
+        return None
+    return {
+        "lat": lat,
+        "lng": lng,
+        "source_url": f"https://www.openstreetmap.org/{osm_type}/{osm_id}",
+        "source_name": candidate.get("display_name") or candidate.get("name"),
+        "precision": precision,
+        "verified_at": None,
+    }
+
+
 async def geocode_query(
-    client: httpx.AsyncClient, query: str
-) -> tuple[float, float] | None:
-    """Query Nominatim once and return (lat, lng) or None if no match."""
+    client: httpx.AsyncClient, query: str, station: Station
+) -> dict | None:
+    """Return the first identity-checked candidate, not the first search hit."""
     params = {
         "q": query,
         "format": "json",
-        "limit": 1,
+        "limit": 5,
         "countrycodes": "tw",
+        "addressdetails": 1,
+        "extratags": 1,
     }
     try:
         resp = await client.get(NOMINATIM_URL, params=params, timeout=30.0)
@@ -133,19 +231,22 @@ async def geocode_query(
     except (httpx.HTTPError, ValueError) as err:
         logger.warning("Nominatim error for %r: %s", query, err)
         return None
-    if not data:
+    if not isinstance(data, list):
         return None
-    return float(data[0]["lat"]), float(data[0]["lon"])
+    for candidate in data:
+        if isinstance(candidate, dict):
+            result = matched_candidate(candidate, station)
+            if result is not None:
+                return result
+    return None
 
 
-async def geocode_station(
-    client: httpx.AsyncClient, station: Station
-) -> tuple[float, float] | None:
+async def geocode_station(client: httpx.AsyncClient, station: Station) -> dict | None:
     """Try every query strategy until one returns a hit. Respects rate limit."""
     for i, query in enumerate(queries_for(station)):
         if i > 0:
             await asyncio.sleep(REQUEST_DELAY)
-        result = await geocode_query(client, query)
+        result = await geocode_query(client, query, station)
         if result is not None:
             return result
         logger.debug("  · %r — no match", query)
@@ -186,14 +287,19 @@ _BLANK_ENTRY = {
     "name": None,
     "address": None,
     "resolved_at": None,
+    "source_url": None,
+    "source_name": None,
+    "precision": None,
+    "verified_at": None,
 }
 
 
 def is_resolved(entry: dict | None) -> bool:
-    """True when an entry has *both* numeric lat and lng (after normalization)."""
+    """Finite Taiwan coordinates; this does not prove the location identity."""
     if not entry:
         return False
-    return entry.get("lat") is not None and entry.get("lng") is not None
+    lat, lng = _as_float(entry.get("lat")), _as_float(entry.get("lng"))
+    return lat is not None and lng is not None and is_in_taiwan(lat, lng)
 
 
 def _as_float(value: object) -> float | None:
@@ -206,7 +312,7 @@ def _as_float(value: object) -> float | None:
     """
     if isinstance(value, bool):
         return None
-    if isinstance(value, (int, float)):
+    if isinstance(value, (int, float)) and math.isfinite(value):
         return float(value)
     return None
 
@@ -255,15 +361,11 @@ def needs_geocode(entry: dict | None, station: Station) -> bool:
     True if any of:
     * entry missing entirely (new station)
     * entry has no coords yet (previous failure → retry)
-    * upstream address has changed since last resolve (re-geocode)
+    * upstream address/name has changed since last resolve (re-geocode)
     """
     if not is_resolved(entry):
         return True
-    if (
-        station.address
-        and entry.get("address")
-        and station.address != entry.get("address")
-    ):
+    if station.address != entry.get("address") or station.name != entry.get("name"):
         return True
     return False
 
@@ -289,7 +391,6 @@ async def main() -> None:
 
     headers = {"User-Agent": USER_AGENT}
     today = date.today().isoformat()
-    out_of_bbox: list[str] = []
 
     async with httpx.AsyncClient(headers=headers) as client:
         for i, station in enumerate(stations, start=1):
@@ -313,20 +414,10 @@ async def main() -> None:
                     "resolved_at": None,
                 }
             else:
-                lat, lng = result
-                if not is_in_taiwan(lat, lng):
-                    logger.warning(
-                        "  ⚠️ %s resolved to OUT-OF-TAIWAN coords (%.5f, %.5f) — kept but flagged",
-                        station.name,
-                        lat,
-                        lng,
-                    )
-                    out_of_bbox.append(station.tid)
-                else:
-                    logger.info("  ✓ %s -> %.5f, %.5f", station.name, lat, lng)
+                lat, lng = result["lat"], result["lng"]
+                logger.info("  candidate %s -> %.5f, %.5f", station.name, lat, lng)
                 coords[station.tid] = {
-                    "lat": lat,
-                    "lng": lng,
+                    **result,
                     "name": station.name,
                     "address": station.address,
                     "resolved_at": today,
@@ -342,12 +433,6 @@ async def main() -> None:
         len(coords) - matched,
         OUTPUT_PATH,
     )
-    if out_of_bbox:
-        logger.warning(
-            "%d station(s) outside Taiwan bbox — please review: %s",
-            len(out_of_bbox),
-            ", ".join(out_of_bbox),
-        )
 
 
 if __name__ == "__main__":

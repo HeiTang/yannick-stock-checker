@@ -42,7 +42,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.core.scraper import YannickScraper
-from scripts.geocode_stations import is_resolved, load_coords_file
+from scripts.geocode_stations import load_coords_file, needs_geocode
 
 COORDS_PATH = Path("app/data/station_coords.json")
 
@@ -95,8 +95,7 @@ async def detect() -> dict:
                 }
             )
 
-    # Previously failed (in JSON but lat or lng is null — checked via
-    # `is_resolved()`) — retry candidates.
+    # Invalid coordinates or stale identity metadata — retry candidates.
     # Make the categories mutually exclusive: skip tids already covered by
     # `address_changed`, which will re-geocode anyway.
     addr_changed_tids = {item["tid"] for item in addr_changed}
@@ -105,8 +104,8 @@ async def detect() -> dict:
             continue
         if tid in addr_changed_tids:
             continue
-        if not is_resolved(entry):
-            s = upstream[tid]
+        s = upstream[tid]
+        if needs_geocode(entry, s):
             previously_failed.append({"tid": tid, "name": s.name, "address": s.address})
 
     has_changes = bool(new_list or addr_changed or removed or previously_failed)
