@@ -7,7 +7,7 @@
 		<img src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
 		<img src="coverage.svg" alt="Coverage report" />
 	</p>
-	<img src="./.github/assets/demo-page-2.png" alt="Demo screenshot" />
+	<img src="./docs/screenshots/home-hero.png" alt="亞尼克庫存雷達首頁與即時庫存總覽" />
 </div>
 
 <div align="center">
