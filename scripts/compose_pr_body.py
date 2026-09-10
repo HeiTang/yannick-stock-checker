@@ -31,7 +31,14 @@ def maps_link(lat: float, lng: float) -> str:
 def fmt_coords(entry: dict | None) -> str:
     if not is_resolved(entry):
         return "⚠️ **failed — needs manual lookup**"
-    return f"{entry['lat']:.5f}, {entry['lng']:.5f} · [Maps]({maps_link(entry['lat'], entry['lng'])})"
+    text = f"{entry['lat']:.5f}, {entry['lng']:.5f} · [Maps]({maps_link(entry['lat'], entry['lng'])})"
+    if entry.get("source_url"):
+        text += (
+            f" · [來源]({entry['source_url']}) / {entry.get('precision') or 'unknown'}"
+        )
+    if not entry.get("verified_at"):
+        text += " · **自動候選，尚未獨立核對**"
+    return text
 
 
 def main() -> None:
