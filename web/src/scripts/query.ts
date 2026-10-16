@@ -34,6 +34,8 @@ interface StationSummary {
   station_addr: string;
   branch_code: string;
   branch_name: string;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 interface BranchGroup {
@@ -106,7 +108,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
 
   let products: ProductSummary[] = [];
   let branches: BranchGroup[] = [];
-  let allStations: (StationSummary & { lat?: number; lng?: number; distanceKm?: number })[] = [];
+  let allStations: (StationSummary & { distanceKm?: number })[] = [];
   const productDetailCache = new Map<string, ProductDetail>();
   const stationDetailCache = new Map<string, StationProductRow[]>();
 
@@ -603,6 +605,9 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       track('button_click', { button_name: `view_${v}`, button_area: 'query' });
       state.keyword = '';
       $input.value = '';
+      if (v === 'stations' && state.located) {
+        state.pickedStation = filteredStations()[0]?.station_id ?? state.pickedStation;
+      }
       persistState();
       renderAll();
     });
@@ -711,6 +716,9 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         state.located = true;
         isLocating = false;
+        if (state.view === 'stations') {
+          state.pickedStation = filteredStations()[0]?.station_id ?? state.pickedStation;
+        }
         track('location_result', { location_success: true });
         persistState();
         renderAll();
