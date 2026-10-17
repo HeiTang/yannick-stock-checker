@@ -34,6 +34,8 @@ interface StationSummary {
   station_addr: string;
   branch_code: string;
   branch_name: string;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 interface BranchGroup {
@@ -106,7 +108,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
 
   let products: ProductSummary[] = [];
   let branches: BranchGroup[] = [];
-  let allStations: (StationSummary & { lat?: number; lng?: number; distanceKm?: number })[] = [];
+  let allStations: (StationSummary & { distanceKm?: number })[] = [];
   const productDetailCache = new Map<string, ProductDetail>();
   const stationDetailCache = new Map<string, StationProductRow[]>();
 
@@ -162,7 +164,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     view: 'products',
     keyword: '',
     pickedProduct: products[0].commodity_code,
-    pickedStation: allStations[0].station_id,
+    pickedStation: '',
     located: false,
     branch: 'all',
     focused: false,
@@ -176,9 +178,6 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         if (saved.view === 'stations' || saved.view === 'products') initial.view = saved.view;
         if (saved.product && products.some((p) => p.commodity_code === saved.product)) {
           initial.pickedProduct = saved.product;
-        }
-        if (saved.station && allStations.some((s) => s.station_id === saved.station)) {
-          initial.pickedStation = saved.station;
         }
         // Intentionally do not restore `located`: userPos is not persisted,
         // restoring "located=true" would show stale label without distance data.
@@ -285,7 +284,8 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       u.set('p', state.pickedProduct);
       u.delete('s');
     } else {
-      u.set('s', state.pickedStation);
+      if (state.pickedStation) u.set('s', state.pickedStation);
+      else u.delete('s');
       u.delete('p');
     }
     history.replaceState(null, '', location.pathname + '?' + u.toString() + location.hash);
@@ -351,6 +351,8 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
 
   // ---- Render functions ----
   function renderSeg() {
+    root.classList.toggle('yt-console--stations', state.view === 'stations');
+    $right.hidden = state.view === 'stations';
     $segBtns.forEach((btn) => {
       const isActive = btn.dataset.view === state.view;
       btn.classList.toggle('is-active', isActive);
@@ -386,14 +388,10 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         .join('');
     } else {
       const matches = filteredStations();
-      if (matches.length === 0) {
-        $resultList.innerHTML = `<div class="yt-empty">找不到符合的站點</div>`;
-        return;
-      }
-      $resultList.innerHTML = matches
+      const cards = matches
         .map((s) => {
           const active = s.station_id === state.pickedStation ? ' is-active' : '';
-          // Prefer the freshest source: detail-cache (post-click) > batch counts > "·".
+          // Prefer fetched stock over batch counts; omitted batch entries have no stock.
           // A fetched-but-empty station shows "0 款" (filtered on quantity > 0).
           // `!== undefined` already covers `0` correctly, so a single check is enough.
           const cached = stationDetailCache.get(s.station_id);
@@ -403,21 +401,41 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
           } else if (stationCounts[s.station_id] !== undefined) {
             countLabel = `${stationCounts[s.station_id]} 款`;
           } else {
-            countLabel = '·';
+            countLabel = cData?.counts ? '0 款' : '款數未知';
           }
-          const right =
-            state.located && s.distanceKm != null ? formatDistance(s.distanceKm) : countLabel;
+          const distance = state.located
+            ? (s.distanceKm != null ? formatDistance(s.distanceKm) : '距離未知')
+            : '';
+          const detailId = `${root.id || 'query-console'}-station-${encodeURIComponent(s.station_id)}`;
           return `
-          <button class="yt-result${active}" type="button" data-tid="${escapeHtml(s.station_id)}">
+          <div class="yt-station-card">
+          <button class="yt-result${active}" type="button" data-tid="${escapeHtml(s.station_id)}"
+                  aria-expanded="${Boolean(active)}" aria-controls="${escapeHtml(detailId)}">
             <span class="yt-result-dot" style="background:var(--yt-brand)"></span>
             <span class="yt-result-text">
               <span class="yt-result-name">${escapeHtml(s.station_name)}</span>
               <span class="yt-result-flavor">${escapeHtml(s.branch_name)}</span>
+              <span class="yt-result-flavor">${escapeHtml(s.station_addr)}</span>
             </span>
-            <span class="yt-result-count">${right}</span>
-          </button>`;
+            <span class="yt-station-summary">
+              ${distance ? `<span class="yt-result-count">${distance}</span>` : ''}
+              <span class="yt-result-count" data-count="${escapeHtml(s.station_id)}">${countLabel}</span>
+            </span>
+            <span class="yt-station-caret">${icon('caret-down', { size: 16 })}</span>
+          </button>
+          <div class="yt-station-stock" id="${escapeHtml(detailId)}" data-stock="${escapeHtml(s.station_id)}" aria-label="${escapeHtml(s.station_name)}商品庫存" aria-live="polite" ${active ? '' : 'hidden'}>${active ? '<div class="yt-empty" role="status">載入庫存中…</div>' : ''}</div>
+          </div>`;
         })
         .join('');
+      $resultList.innerHTML = `
+        <div class="yt-panel-head">
+          <div><div class="yt-panel-title">站點庫存</div>
+            <div class="yt-panel-sub">${state.located ? '已依距離排序 · 直線距離' : '點擊站點展開商品庫存'} · ${matches.length} 站</div></div>
+          <button class="yt-locate-btn${state.located ? ' is-active' : ''}" type="button" data-locate ${isLocating ? 'disabled' : ''}>
+            ${icon('map-pin', { size: 15 })}<span>${isLocating ? '定位中…' : state.located ? '已定位' : '開啟定位'}</span>
+          </button>
+        </div>
+        ${matches.length === 0 ? '<div class="yt-empty">找不到符合的站點</div>' : cards}`;
     }
   }
 
@@ -509,42 +527,22 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     `;
   }
 
-  async function renderRightStation() {
-    const station = stationById.get(state.pickedStation) ?? allStations[0];
-    const expectedView = state.view;
-    const expectedId = station.station_id;
-    const rows = await loadStationDetail(station.station_id);
-    // Guard against stale render: user may have switched view/station
-    // between dispatch and await resolution.
-    if (state.view !== expectedView || state.pickedStation !== expectedId) return;
+  async function renderStationStock() {
+    const tid = state.pickedStation;
+    if (!tid || !filteredStations().some((s) => s.station_id === tid)) return;
+    const rows = await loadStationDetail(tid);
+    if (state.view !== 'stations' || state.pickedStation !== tid) return;
+    const panel = $resultList.querySelector<HTMLElement>(`[data-stock="${CSS.escape(tid)}"]`);
+    if (!panel) return;
     if (!rows) {
-      $right.innerHTML = `<div class="yt-empty">無法載入站點資料</div>`;
+      panel.innerHTML = `<div class="yt-empty">無法載入站點資料 <button type="button" class="yt-locate-btn" data-retry>重試</button></div>`;
       return;
     }
     const inStock = rows.filter((r) => r.quantity > 0).sort((a, b) => b.quantity - a.quantity);
-    const stationDist =
-      state.located && userPos && station.lat != null && station.lng != null
-        ? haversineKm(userPos, { lat: station.lat, lng: station.lng })
-        : null;
-    const subBits = [
-      `${inStock.length} 款在庫`,
-      station.branch_name,
-      stationDist != null ? formatDistance(stationDist) : '',
-    ].filter(Boolean);
-
-    $right.innerHTML = `
-      <div class="yt-panel-head">
-        <div style="min-width:0">
-          <div class="yt-panel-title">${escapeHtml(station.station_name)}</div>
-          <div class="yt-panel-sub">${escapeHtml(subBits.join(' · '))}</div>
-        </div>
-        <button class="yt-locate-btn${state.located ? ' is-active' : ''}" type="button"
-                data-locate ${isLocating ? 'disabled' : ''}>
-          ${icon('map-pin', { size: 15, weight: state.located ? 'fill' : 'bold' })}
-          <span>${isLocating ? '定位中…' : state.located ? '已定位' : '開啟定位'}</span>
-        </button>
-      </div>
-      <div class="yt-srows yt-srows--scroll">
+    const count = $resultList.querySelector<HTMLElement>(`[data-count="${CSS.escape(tid)}"]`);
+    if (count) count.textContent = `${inStock.length} 款`;
+    panel.innerHTML = `
+      <div class="yt-srows">
         ${inStock.length === 0
           ? `<div class="yt-empty">此站點目前無庫存</div>`
           : inStock
@@ -570,10 +568,6 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
               })
               .join('')}
       </div>
-      <div class="yt-panel-foot">
-        ${icon('info', { size: 14, weight: 'regular' })}
-        <span>此站共 ${inStock.length} 款生乳捲現貨 · 點擊商品可看全台分布</span>
-      </div>
     `;
   }
 
@@ -589,7 +583,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     if (state.view === 'products') {
       await renderRightProduct();
     } else {
-      await renderRightStation();
+      await renderStationStock();
     }
     $clear.hidden = state.keyword === '';
   }
@@ -603,6 +597,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       track('button_click', { button_name: `view_${v}`, button_area: 'query' });
       state.keyword = '';
       $input.value = '';
+      state.pickedStation = '';
       persistState();
       renderAll();
     });
@@ -610,9 +605,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
 
   $input.addEventListener('input', () => {
     state.keyword = $input.value;
-    renderResultList();
-    renderCollapsible();
-    $clear.hidden = state.keyword === '';
+    renderAll();
   });
   $input.addEventListener('focus', () => {
     state.focused = true;
@@ -628,9 +621,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     state.keyword = '';
     $input.value = '';
     $input.focus();
-    renderResultList();
-    renderCollapsible();
-    $clear.hidden = true;
+    renderAll();
   });
 
   $resultList.addEventListener('click', (e) => {
@@ -638,21 +629,30 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     if (!btn) return;
     const code = btn.dataset.code;
     const tid = btn.dataset.tid;
-    track('query_completed', {
-      query_type: code ? 'product' : 'station',
-      query_item_id: code ?? tid ?? '',
-      query_source: 'result_list',
-      used_search: Boolean(state.keyword.trim()),
-    });
+    if (code || tid !== state.pickedStation) {
+      track('query_completed', {
+        query_type: code ? 'product' : 'station',
+        query_item_id: code ?? tid ?? '',
+        query_source: 'result_list',
+        used_search: Boolean(state.keyword.trim()),
+      });
+    }
     if (code) state.pickedProduct = code;
-    if (tid) state.pickedStation = tid;
+    if (tid) state.pickedStation = state.pickedStation === tid ? '' : tid;
     state.focused = false;
     persistState();
     renderAll();
+    if (tid) {
+      $resultList.querySelector<HTMLButtonElement>(`[data-tid="${CSS.escape(tid)}"]`)?.focus({ preventScroll: true });
+    }
   });
 
-  $right.addEventListener('click', (e) => {
+  consoleEl.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
+    if (target.closest('[data-retry]')) {
+      renderAll();
+      return;
+    }
     const pill = target.closest<HTMLButtonElement>('.yt-bpill');
     if (pill) {
       state.branch = pill.dataset.branch ?? 'all';
