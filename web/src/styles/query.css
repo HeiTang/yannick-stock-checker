@@ -702,3 +702,46 @@ body {
     box-shadow: var(--shadow-4);
   }
 }
+
+/* Station view keeps the summary and its stock in the same list. */
+.yt-console--stations .yt-console-grid {
+  grid-template-columns: 1fr;
+}
+.yt-console--stations .yt-console-right {
+  display: none;
+}
+.yt-console--stations .yt-result-list.yt-collapsible {
+  display: flex;
+  position: static;
+  height: auto;
+  max-height: none;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.yt-station-card {
+  border: 1px solid var(--yt-hairline);
+  border-radius: 14px;
+}
+.yt-station-card > .yt-result {
+  min-height: 64px;
+}
+.yt-station-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.yt-station-stock {
+  padding: 8px 12px 12px;
+}
+.yt-result[aria-expanded='true'] .yt-station-caret {
+  transform: rotate(180deg);
+}
+.yt-station-card .yt-result:focus-visible {
+  outline: 2px solid var(--yt-brand);
+  outline-offset: 2px;
+}
