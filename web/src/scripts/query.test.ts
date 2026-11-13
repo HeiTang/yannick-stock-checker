@@ -32,6 +32,7 @@ async function setup(search = '', countsAvailable = true, storage = new Map<stri
   const right = { ...element(), id: 'query-console-details' };
   const grid = element();
   const media = { ...element(), matches: mobile };
+  const motion = { ...element(), matches: false };
   const favoritesFilter = element();
   const favoritesStatus = element();
   const favoritesAll = element();
@@ -80,7 +81,7 @@ async function setup(search = '', countsAvailable = true, storage = new Map<stri
     available_stations: 3,
   };
   vi.stubGlobal('document', { querySelector: () => root });
-  vi.stubGlobal('window', { ...element(), matchMedia: () => media });
+  vi.stubGlobal('window', { ...element(), matchMedia: (query: string) => query.includes('reduced-motion') ? motion : media });
   vi.stubGlobal('alert', vi.fn());
   vi.stubGlobal('CSS', { escape: (s: string) => s });
   vi.stubGlobal('location', { search, pathname: '/query/', hash: '' });
@@ -136,7 +137,7 @@ async function setup(search = '', countsAvailable = true, storage = new Map<stri
     target: { closest: (selector: string) => selector === '[data-favorite]'
       ? { dataset: { favorite: id, favoriteView: view } } : null },
   });
-  return { input, results, right, grid, resize, clickProduct, counts, clickStation, action, switchToStations, locate,
+  return { input, results, right, grid, resize, motion, clickProduct, counts, clickStation, action, switchToStations, locate,
     favorite, favoritesFilter, favoritesStatus, favoritesAll, allCount, favoritesCount, locateButton };
 }
 
@@ -476,5 +477,70 @@ describe('review regressions', () => {
     expect(ui.right.innerHTML).not.toContain('近站');
     resolve({ ok: true, json: async () => ({ product: { commodity_code: 'P', product_name: '生乳捲' }, stations: [] }) } as Response);
     await vi.waitFor(() => expect(ui.right.innerHTML).toContain('個站點仍有現貨'));
+  });
+});
+
+
+describe('query transitions', () => {
+  it('animates selection and skips an unfinished transition on the next action', async () => {
+    const ui = await setup('?s=near', true, new Map(), true);
+    const transition = { skipTransition: vi.fn(), ready: Promise.resolve(), finished: new Promise<void>(() => {}) };
+    const start = vi.fn((update: () => void) => { update(); return transition; });
+    Object.assign(document, { startViewTransition: start });
+    ui.clickStation('far');
+    expect(start).toHaveBeenCalledTimes(1);
+    ui.clickStation('far');
+    expect(transition.skipTransition).toHaveBeenCalledOnce();
+    expect(ui.right.hidden).toBe(true);
+  });
+
+  it('updates immediately when reduced motion is enabled', async () => {
+    const ui = await setup('?s=near', true, new Map(), true);
+    const start = vi.fn();
+    Object.assign(document, { startViewTransition: start });
+    ui.motion.matches = true;
+    ui.clickStation('far');
+    expect(start).not.toHaveBeenCalled();
+    expect(ui.results.innerHTML.match(/aria-expanded="true"/g)).toHaveLength(1);
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('遠站'));
+  });
+});
+
+
+describe('queued transition updates', () => {
+  it('discards a queued animation update after a newer search render', async () => {
+    const ui = await setup('?s=near', true, new Map(), true);
+    let queued!: () => void;
+    Object.assign(document, {
+      startViewTransition: (update: () => void) => {
+        queued = update;
+        return { skipTransition: vi.fn(), ready: Promise.resolve(), finished: new Promise<void>(() => {}) };
+      },
+    });
+    ui.clickStation('far');
+    ui.input.value = '站';
+    ui.input.dispatch('input');
+    vi.mocked(ui.grid.append).mockClear();
+    queued();
+    expect(ui.grid.append).not.toHaveBeenCalled();
+  });
+
+  it('only applies the newest of two queued selection updates', async () => {
+    const ui = await setup('?s=near', true, new Map(), true);
+    const updates: (() => void)[] = [];
+    Object.assign(document, {
+      startViewTransition: (update: () => void) => {
+        updates.push(update);
+        return { skipTransition: vi.fn(), ready: Promise.resolve(), finished: new Promise<void>(() => {}) };
+      },
+    });
+    ui.clickStation('far');
+    ui.clickStation('near');
+    vi.mocked(ui.grid.append).mockClear();
+    updates[0]();
+    expect(ui.grid.append).not.toHaveBeenCalled();
+    updates[1]();
+    expect(ui.grid.append).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('近站'));
   });
 });

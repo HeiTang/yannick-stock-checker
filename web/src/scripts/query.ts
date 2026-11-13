@@ -235,6 +235,9 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   let favoritesOnly = false;
   const mobileLayout = window.matchMedia('(max-width: 940px)');
   let mobileExpanded = hasDeepLink;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let activeTransition: ViewTransition | undefined;
+  let renderRevision = 0;
 
   // ---- DOM ----
   let consoleEl: HTMLElement = root;
@@ -497,7 +500,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
           const active = p.commodity_code === state.pickedProduct && (!mobileLayout.matches || mobileExpanded) ? ' is-active' : '';
           return `
           <div class="yt-query-item">
-          <div class="yt-result yt-choice${active}">
+          <div class="yt-result yt-choice${active}" style="view-transition-name:yt-product-${products.indexOf(p)}">
           <button class="yt-result yt-choice-trigger" type="button" data-code="${escapeHtml(p.commodity_code)}"
                   aria-label="${escapeHtml(p.product_name)}" ${selectionAria(Boolean(active))}></button>
             ${favoriteButton('products', p.commodity_code, p.product_name)}
@@ -533,7 +536,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
             : '';
           return `
           <div class="yt-station-card yt-query-item">
-          <div class="yt-result yt-choice${active}">
+          <div class="yt-result yt-choice${active}" style="view-transition-name:yt-station-${allStations.findIndex((station) => station.station_id === s.station_id)}">
           <button class="yt-result yt-choice-trigger" type="button" data-tid="${escapeHtml(s.station_id)}"
                   aria-label="${escapeHtml(s.station_name)}，${escapeHtml(s.station_addr)}"
                   ${selectionAria(Boolean(active))}></button>
@@ -690,6 +693,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   }
 
   async function renderAll() {
+    renderRevision++;
     // Preserve the shared panel before replacing the mobile list markup.
     $grid.append($right);
     renderSeg();
@@ -704,6 +708,26 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     }
   }
 
+  function renderWithMotion(afterRender?: () => void): void {
+    activeTransition?.skipTransition();
+    const revision = ++renderRevision;
+    const update = () => {
+      if (revision !== renderRevision) return;
+      void renderAll();
+      afterRender?.();
+    };
+    if (reducedMotion.matches || typeof document.startViewTransition !== 'function') {
+      update();
+      return;
+    }
+    const transition = document.startViewTransition(update);
+    activeTransition = transition;
+    void transition.ready.catch(() => {});
+    void transition.finished.catch(() => {}).finally(() => {
+      if (activeTransition === transition) activeTransition = undefined;
+    });
+  }
+
   // ---- Event handlers ----
   mobileLayout.addEventListener('change', () => { renderAll(); });
   window.addEventListener('storage', (event) => {
@@ -713,11 +737,11 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   });
   $favoritesFilter.addEventListener('click', () => {
     favoritesOnly = true;
-    renderAll();
+    renderWithMotion();
   });
   $favoritesAll.addEventListener('click', () => {
     favoritesOnly = false;
-    renderAll();
+    renderWithMotion();
   });
   $segBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -729,7 +753,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       state.keyword = '';
       $input.value = '';
       persistState();
-      renderAll();
+      renderWithMotion();
     });
   });
 
@@ -797,12 +821,13 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     if (code) state.pickedProduct = code;
     if (tid) state.pickedStation = tid;
     persistState();
-    renderAll();
-    const selectedId = code ?? tid;
-    if (selectedId) {
-      const selector = code ? `[data-code="${CSS.escape(selectedId)}"]` : `[data-tid="${CSS.escape(selectedId)}"]`;
-      $resultList.querySelector<HTMLButtonElement>(selector)?.focus({ preventScroll: true });
-    }
+    renderWithMotion(() => {
+      const selectedId = code ?? tid;
+      if (selectedId) {
+        const selector = code ? `[data-code="${CSS.escape(selectedId)}"]` : `[data-tid="${CSS.escape(selectedId)}"]`;
+        $resultList.querySelector<HTMLButtonElement>(selector)?.focus({ preventScroll: true });
+      }
+    });
   });
 
   consoleEl.addEventListener('click', (e) => {
@@ -814,7 +839,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     const pill = target.closest<HTMLButtonElement>('.yt-bpill');
     if (pill) {
       state.branch = pill.dataset.branch ?? 'all';
-      renderRightProduct();
+      renderWithMotion();
       return;
     }
     const locBtn = target.closest<HTMLButtonElement>('[data-locate]');
@@ -846,7 +871,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     state.pickedProduct = code;
     $input.value = '';
     persistState();
-    renderAll();
+    renderWithMotion();
   }
 
   function toggleLocate() {
