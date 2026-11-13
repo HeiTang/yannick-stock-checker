@@ -402,12 +402,6 @@ body {
   background: color-mix(in srgb, var(--yt-brand) 12%, transparent);
   border-color: color-mix(in srgb, var(--yt-brand) 32%, transparent);
 }
-.yt-result-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  flex: none;
-}
 .yt-result-text {
   display: flex;
   flex-direction: column;
@@ -626,11 +620,55 @@ body {
 }
 
 .yt-empty {
-  padding: 30px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 180px;
+  padding: 28px 16px;
   text-align: center;
+}
+.yt-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 4px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--yt-brand) 10%, transparent);
+  color: color-mix(in srgb, var(--yt-brand) 70%, var(--yt-ink));
+}
+.yt-empty-title {
+  color: var(--yt-ink);
   font-size: 14px;
   font-weight: 600;
-  color: var(--yt-ink-3);
+}
+.yt-empty-description {
+  max-width: 100%;
+  margin: 0;
+  color: var(--yt-ink-2);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.yt-empty-action {
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 0 16px;
+  border: 1px solid var(--yt-hairline);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--yt-ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.yt-empty-action:hover {
+  background: color-mix(in srgb, var(--yt-ink) 5%, transparent);
+}
+.yt-empty-action:focus-visible {
+  outline: 2px solid var(--yt-brand);
+  outline-offset: 2px;
 }
 
 /* ---------- Motion ---------- */
@@ -651,6 +689,10 @@ body {
   }
 }
 
+.yt-choice-caret {
+  display: none;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 940px) {
   .yt-console-grid {
@@ -662,10 +704,54 @@ body {
     border-top: 1px solid var(--yt-hairline);
     padding-top: 16px;
   }
+  .yt-result-list,
   .yt-console--lean .yt-result-list,
+  .yt-srows--scroll,
   .yt-console--lean .yt-srows--scroll {
     height: auto;
-    max-height: 60vh;
+    max-height: none;
+  }
+  .yt-query-item:has(> .yt-choice.is-active) {
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--yt-brand) 5%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--yt-brand) 32%, transparent);
+  }
+  .yt-query-item > .yt-choice.is-active {
+    border-color: transparent;
+    background: transparent;
+  }
+  .yt-query-item > .yt-console-right {
+    margin: 0;
+    padding: 0 12px 12px;
+    border: none;
+    border-radius: 0;
+  }
+  .yt-query-item .yt-srows {
+    gap: 0;
+    overflow: visible;
+    padding-right: 0;
+  }
+  .yt-query-item .yt-srow {
+    padding: 12px 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+  }
+  .yt-query-item .yt-srow + .yt-srow {
+    border-top: 1px solid var(--yt-hairline);
+  }
+  .yt-query-item .yt-srow--clickable:hover {
+    background: color-mix(in srgb, var(--yt-brand) 8%, transparent);
+  }
+  .yt-console-right > .yt-panel-head {
+    display: none;
+  }
+  .yt-choice > .yt-choice-caret {
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+  .yt-choice.is-active > .yt-choice-caret {
+    transform: rotate(180deg);
   }
 }
 @media (max-width: 680px) {
@@ -678,70 +764,174 @@ body {
   .yt-updated {
     display: none;
   }
-  /* 手機版：結果清單預設收起，點搜尋欄時以浮層下拉呈現 */
-  .yt-console-left {
-    position: relative;
-  }
-  .yt-result-list.yt-collapsible:not(.is-open) {
-    display: none;
-  }
-  .yt-result-list.yt-collapsible.is-open {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
-    right: 0;
-    z-index: 30;
-    height: auto;
-    max-height: 52vh;
-    padding: 8px;
-    background: color-mix(in srgb, var(--yt-surface) 92%, transparent);
-    -webkit-backdrop-filter: blur(40px) saturate(1.8);
-    backdrop-filter: blur(40px) saturate(1.8);
-    border: 1px solid var(--yt-hairline);
-    border-radius: 18px;
-    box-shadow: var(--shadow-4);
-  }
 }
 
-/* Station view keeps the summary and its stock in the same list. */
-.yt-console--stations .yt-console-grid {
-  grid-template-columns: 1fr;
-}
-.yt-console--stations .yt-console-right {
-  display: none;
-}
-.yt-console--stations .yt-result-list.yt-collapsible {
-  display: flex;
-  position: static;
-  height: auto;
-  max-height: none;
-  padding: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-.yt-station-card {
-  border: 1px solid var(--yt-hairline);
-  border-radius: 14px;
-}
-.yt-station-card > .yt-result {
-  min-height: 64px;
-}
 .yt-station-summary {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 4px;
 }
-.yt-station-stock {
-  padding: 8px 12px 12px;
+.yt-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-.yt-result[aria-expanded='true'] .yt-station-caret {
-  transform: rotate(180deg);
+.yt-list-filter {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-bottom: 1px solid var(--yt-hairline);
 }
-.yt-station-card .yt-result:focus-visible {
+.yt-filter-count {
+  color: var(--yt-ink-2);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.yt-filter-btn {
+  min-height: 44px;
+  padding: 0 2px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--yt-ink-2);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.yt-filter-btn:hover {
+  color: var(--yt-ink);
+}
+.yt-filter-btn.is-active {
+  color: var(--yt-ink);
+  border-bottom-color: var(--yt-brand);
+  font-weight: 600;
+}
+.yt-filter-btn:focus-visible {
   outline: 2px solid var(--yt-brand);
   outline-offset: 2px;
+}
+.yt-feedback:not(.is-error) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.yt-feedback.is-error {
+  color: var(--yt-ink);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.yt-result-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.yt-result-row > .yt-result {
+  flex: 1;
+  min-width: 0;
+}
+.yt-favorite {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  height: 44px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: color-mix(in srgb, var(--yt-favorite-accent, var(--yt-brand)) 80%, var(--yt-ink));
+  cursor: pointer;
+}
+.theme-dark .yt-favorite {
+  color: color-mix(in srgb, var(--yt-favorite-accent, var(--yt-brand)) 55%, var(--yt-ink));
+}
+.yt-favorite:hover {
+  background: color-mix(in srgb, var(--yt-ink) 5%, transparent);
+}
+.yt-favorite:focus-visible,
+[data-favorites-filter]:focus-visible {
+  outline: 2px solid var(--yt-brand);
+  outline-offset: 2px;
+}
+
+.yt-choice {
+  position: relative;
+}
+.yt-choice-trigger {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+.yt-choice-trigger:hover {
+  background: transparent;
+}
+.yt-choice > span {
+  pointer-events: none;
+}
+.yt-choice > .yt-favorite {
+  margin-block: -11px;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.yt-result:focus-visible {
+  outline: 2px solid var(--yt-brand);
+  outline-offset: 2px;
+}
+
+.yt-choice > .yt-result-count,
+.yt-choice > .yt-station-summary {
+  flex: 0 0 56px;
+  width: 56px;
+  text-align: right;
+}
+
+.yt-console-right[hidden] {
+  display: none;
+}
+
+.yt-list-filter > .yt-locate-btn--icon {
+  margin-left: auto;
+  margin-bottom: 4px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--yt-ink-2);
+}
+.yt-list-filter > .yt-locate-btn--icon.is-active {
+  color: var(--yt-brand);
+}
+.yt-list-filter > .yt-locate-btn--icon:hover {
+  background: color-mix(in srgb, var(--yt-ink) 5%, transparent);
+}
+.yt-locate-btn--icon:focus-visible {
+  outline: 2px solid var(--yt-brand);
+  outline-offset: 2px;
+}
+.yt-location-spinner {
+  animation: yt-location-spin 0.8s linear infinite;
+}
+@keyframes yt-location-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yt-location-spinner {
+    animation: none;
+  }
 }
