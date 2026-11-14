@@ -517,6 +517,37 @@ describe('review regressions', () => {
     await Promise.resolve();
   });
 
+  it.each([
+    { view: 'products', id: 'P', name: '生乳捲', remove: false },
+    { view: 'products', id: 'P', name: '生乳捲', remove: true },
+    { view: 'stations', id: 'near', name: '近站', remove: false },
+    { view: 'stations', id: 'near', name: '近站', remove: true },
+  ])('preserves concurrent intent for $view with remove=$remove', async ({ view, id, name, remove }) => {
+    const item = { view, id, name };
+    const other = { view: 'stations', id: 'far', name: '遠站' };
+    const storage = new Map([[FAVORITES_KEY, JSON.stringify([other, ...(remove ? [item] : [])])]]);
+    const query = view === 'products' ? '?p=P' : '?s=near';
+    const first = await setup(query, true, storage);
+    const second = await setup(query, true, storage);
+    const pending: Array<() => void> = [];
+    Object.assign(navigator, { locks: {
+      request: (_name: string, callback: () => void) => new Promise<void>((resolve) => {
+        pending.push(() => { callback(); resolve(); });
+      }),
+    } });
+    first.favorite(id, view);
+    second.favorite(id, view);
+    expect(pending).toHaveLength(2);
+    pending.shift()!();
+    pending.shift()!();
+    expect(JSON.parse(storage.get(FAVORITES_KEY)!)).toEqual(remove ? [other] : [other, item]);
+    const label = `${remove ? '加入我的最愛' : '取消收藏'}：${name}`;
+    expect(first.results.innerHTML).toContain(label);
+    expect(second.results.innerHTML).toContain(label);
+    expect(second.favoritesStatus.textContent).toBe(remove ? '已取消收藏' : '已加入我的最愛');
+    await Promise.resolve();
+  });
+
   it('preserves the visible favorites when storage cannot be read during synchronization', async () => {
     const ui = await setup('?p=P');
     ui.favorite('P');

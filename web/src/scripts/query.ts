@@ -885,6 +885,8 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       const id = favorite.dataset.favorite!;
       const view = favorite.dataset.favoriteView;
       if (view !== 'products' && view !== 'stations') return;
+      // Keep the clicked action even if another tab changes storage while we wait.
+      const remove = isFavorite(view, id);
       if (!navigator.locks) {
         $favoritesStatus.classList.toggle('is-error', true);
         $favoritesStatus.textContent = '此瀏覽器不支援安全儲存收藏，請更新瀏覽器後再試。';
@@ -899,13 +901,13 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
             $favoritesStatus.textContent = '無法讀取收藏，請確認瀏覽器允許儲存網站資料。';
             return;
           }
-          const saved = isFavorite(view, id);
           const name = view === 'products'
             ? products.find((p) => p.commodity_code === id)?.product_name
             : stationById.get(id)?.station_name;
-          if (!saved && !name) return;
-          const next: Favorite[] = saved ? favorites.filter((f) => f.view !== view || f.id !== id)
-            : [...favorites, { view, id, name: name! }];
+          if (!remove && !name) return;
+          const next: Favorite[] = remove
+            ? favorites.filter((f) => f.view !== view || f.id !== id)
+            : isFavorite(view, id) ? favorites : [...favorites, { view, id, name: name! }];
           try {
             localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
           } catch {
@@ -915,7 +917,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
           }
           favorites = next;
           $favoritesStatus.classList.toggle('is-error', false);
-          $favoritesStatus.textContent = saved ? '已取消收藏' : '已加入我的最愛';
+          $favoritesStatus.textContent = remove ? '已取消收藏' : '已加入我的最愛';
           renderAll();
           const selector = `[data-favorite="${CSS.escape(id)}"]`;
           const nextFocus = $resultList.querySelector<HTMLButtonElement>(selector) ?? $favoritesFilter;
