@@ -894,8 +894,9 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       }
       try {
         await navigator.locks.request(FAVORITES_KEY, () => {
+          let latest: Favorite[];
           try {
-            favorites = parseFavorites(localStorage.getItem(FAVORITES_KEY));
+            latest = parseFavorites(localStorage.getItem(FAVORITES_KEY));
           } catch {
             $favoritesStatus.classList.toggle('is-error', true);
             $favoritesStatus.textContent = '無法讀取收藏，請確認瀏覽器允許儲存網站資料。';
@@ -906,8 +907,8 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
             : stationById.get(id)?.station_name;
           if (!remove && !name) return;
           const next: Favorite[] = remove
-            ? favorites.filter((f) => f.view !== view || f.id !== id)
-            : isFavorite(view, id) ? favorites : [...favorites, { view, id, name: name! }];
+            ? latest.filter((f) => f.view !== view || f.id !== id)
+            : latest.some((f) => f.view === view && f.id === id) ? latest : [...latest, { view, id, name: name! }];
           try {
             localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
           } catch {

@@ -548,6 +548,26 @@ describe('review regressions', () => {
     await Promise.resolve();
   });
 
+  it.each([false, true])('preserves click intent when retrying a failed write, remove=%s', async (remove) => {
+    const item = { view: 'products', id: 'P', name: '生乳捲' };
+    const other = { view: 'stations', id: 'far', name: '遠站' };
+    const storage = new Map([[FAVORITES_KEY, JSON.stringify([other, ...(remove ? [item] : [])])]]);
+    const ui = await setup('?p=P', true, storage);
+    // Another tab updates storage before its event reaches this tab.
+    const latest = [other, ...(remove ? [] : [item])];
+    storage.set(FAVORITES_KEY, JSON.stringify(latest));
+    vi.mocked(localStorage.setItem).mockImplementationOnce(() => { throw new Error('Write denied'); });
+    ui.favorite('P');
+    expect(ui.favoritesStatus.textContent).toContain('無法儲存收藏');
+    const originalLabel = remove ? '取消收藏：生乳捲' : '加入我的最愛：生乳捲';
+    expect(ui.results.innerHTML).toContain(originalLabel);
+    expect(JSON.parse(storage.get(FAVORITES_KEY)!)).toEqual(latest);
+    ui.favorite('P');
+    expect(JSON.parse(storage.get(FAVORITES_KEY)!)).toEqual(remove ? [other] : [other, item]);
+    expect(ui.results.innerHTML).toContain(remove ? '加入我的最愛：生乳捲' : '取消收藏：生乳捲');
+    expect(ui.favoritesStatus.textContent).toBe(remove ? '已取消收藏' : '已加入我的最愛');
+  });
+
   it('preserves the visible favorites when storage cannot be read during synchronization', async () => {
     const ui = await setup('?p=P');
     ui.favorite('P');
