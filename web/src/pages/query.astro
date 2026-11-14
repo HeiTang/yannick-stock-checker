@@ -55,16 +55,10 @@ const ogImage = new URL('/og-image.jpg', Astro.site).href;
 
           <div style="flex:1"></div>
 
-          <div class="yt-updated">
-            <span class="yt-pulse"></span>
-            <span>即時 <span id="updated-at">--:--</span></span>
-          </div>
-
-          <a class="yt-back" href="/">
+          <a class="yt-back" href="/" aria-label="首頁" title="首頁">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-8H9v8H4a1 1 0 0 1-1-1Z" />
             </svg>
-            <span>首頁</span>
           </a>
 
           <div class="yt-theme">
@@ -88,6 +82,7 @@ const ogImage = new URL('/og-image.jpg', Astro.site).href;
 
         <footer class="yt-lean-foot">
           <span>非官方工具，與亞尼克無官方關聯；資料為展示用途。</span>
+          <span class="yt-updated">資料更新 <span id="updated-at">--:--</span></span>
         </footer>
       </div>
     </div>
