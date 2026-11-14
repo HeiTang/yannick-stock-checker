@@ -236,7 +236,8 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   const mobileLayout = window.matchMedia('(max-width: 940px)');
   let mobileExpanded = hasDeepLink;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let activeTransition: ViewTransition | undefined;
+  let contentAnimation: Animation | undefined;
+  let renderedView = state.view;
   let renderRevision = 0;
 
   // ---- DOM ----
@@ -306,6 +307,64 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   const $favoritesCount = consoleEl.querySelector<HTMLElement>('[data-favorites-count]')!;
   const $locate = consoleEl.querySelector<HTMLButtonElement>('[data-locate]')!;
   const $favoritesStatus = consoleEl.querySelector<HTMLElement>('[data-favorites-status]')!;
+
+  let resizePanel: ((fromHeight?: number) => void) | undefined;
+  let resetPanelHeight: (() => void) | undefined;
+  let panelHeightReady = false;
+  if (typeof ResizeObserver === 'function' && typeof consoleEl.animate === 'function') {
+    let previousHeight: number | undefined;
+    let heightAnimation: Animation | undefined;
+    const resetHeight = () => {
+      heightAnimation?.cancel();
+      heightAnimation = undefined;
+      previousHeight = undefined;
+      panelHeightReady = false;
+      consoleEl.style.height = '';
+      consoleEl.classList.toggle('is-resizing', false);
+    };
+    resetPanelHeight = resetHeight;
+    resizePanel = (fromOverride?: number) => {
+      const style = getComputedStyle(consoleEl);
+      const nextHeight = Math.max(parseFloat(style.minHeight) || 0,
+        $grid.getBoundingClientRect().height +
+        parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) +
+        parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth),
+      );
+      if (fromOverride === undefined && heightAnimation && nextHeight === previousHeight) return;
+      const fromHeight = fromOverride ?? (heightAnimation ? consoleEl.getBoundingClientRect().height : previousHeight);
+      previousHeight = nextHeight;
+      panelHeightReady = true;
+      if (!mobileLayout.matches || reducedMotion.matches) {
+        resetHeight();
+        previousHeight = nextHeight;
+        return;
+      }
+      if (fromHeight === undefined || Math.abs(nextHeight - fromHeight) < 1) {
+        heightAnimation?.cancel();
+        heightAnimation = undefined;
+        consoleEl.style.height = '';
+        consoleEl.classList.toggle('is-resizing', false);
+        return;
+      }
+      heightAnimation?.cancel();
+      consoleEl.style.height = `${nextHeight}px`;
+      consoleEl.classList.toggle('is-resizing', true);
+      const animation = consoleEl.animate([
+        { height: `${fromHeight}px` }, { height: `${nextHeight}px` },
+      ], { duration: 240, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+      heightAnimation = animation;
+      void animation.finished.then(() => {
+        if (heightAnimation !== animation) return;
+        heightAnimation = undefined;
+        consoleEl.style.height = '';
+        consoleEl.classList.toggle('is-resizing', false);
+      }).catch(() => {});
+    };
+    const observer = new ResizeObserver(() => resizePanel?.());
+    observer.observe($grid);
+    mobileLayout.addEventListener('change', resetHeight);
+    reducedMotion.addEventListener('change', resetHeight);
+  }
 
   // ---- Helpers ----
   const persistState = () => {
@@ -500,7 +559,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
           const active = p.commodity_code === state.pickedProduct && (!mobileLayout.matches || mobileExpanded) ? ' is-active' : '';
           return `
           <div class="yt-query-item">
-          <div class="yt-result yt-choice${active}" style="view-transition-name:yt-product-${products.indexOf(p)}">
+          <div class="yt-result yt-choice${active}">
           <button class="yt-result yt-choice-trigger" type="button" data-code="${escapeHtml(p.commodity_code)}"
                   aria-label="${escapeHtml(p.product_name)}" ${selectionAria(Boolean(active))}></button>
             ${favoriteButton('products', p.commodity_code, p.product_name)}
@@ -536,7 +595,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
             : '';
           return `
           <div class="yt-station-card yt-query-item">
-          <div class="yt-result yt-choice${active}" style="view-transition-name:yt-station-${allStations.findIndex((station) => station.station_id === s.station_id)}">
+          <div class="yt-result yt-choice${active}">
           <button class="yt-result yt-choice-trigger" type="button" data-tid="${escapeHtml(s.station_id)}"
                   aria-label="${escapeHtml(s.station_name)}，${escapeHtml(s.station_addr)}"
                   ${selectionAria(Boolean(active))}></button>
@@ -642,6 +701,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         <span>${stationsShown.length} 個有貨站點 · 可滾動瀏覽</span>
       </div>
     `;
+
   }
 
   async function renderStationStock() {
@@ -693,6 +753,15 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   }
 
   async function renderAll() {
+    contentAnimation?.cancel();
+    contentAnimation = undefined;
+    renderedView = state.view;
+    const fromHeight = panelHeightReady && mobileLayout.matches && !reducedMotion.matches
+      ? consoleEl.getBoundingClientRect().height : undefined;
+    if (fromHeight !== undefined) {
+      consoleEl.style.height = `${fromHeight}px`;
+      consoleEl.classList.toggle('is-resizing', true);
+    }
     renderRevision++;
     // Preserve the shared panel before replacing the mobile list markup.
     $grid.append($right);
@@ -700,35 +769,40 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     renderResultList();
     renderUnavailableFavorites();
     $clear.hidden = state.keyword === '';
-    if (!placeDetails()) return;
-    if (state.view === 'products') {
-      await renderRightProduct();
-    } else {
-      await renderStationStock();
-    }
+    const details = placeDetails()
+      ? state.view === 'products' ? renderRightProduct() : renderStationStock()
+      : undefined;
+    if (fromHeight !== undefined) resizePanel?.(fromHeight);
+    await details;
+  }
+
+  function fadeContent(target: HTMLElement): void {
+    if (reducedMotion.matches || typeof target.animate !== 'function') return;
+    contentAnimation?.cancel();
+    contentAnimation = target.animate([{ opacity: 0.55 }, { opacity: 1 }], {
+      duration: 160, easing: 'ease-out',
+    });
   }
 
   function renderWithMotion(afterRender?: () => void): void {
-    activeTransition?.skipTransition();
-    const revision = ++renderRevision;
-    const update = () => {
-      if (revision !== renderRevision) return;
-      void renderAll();
-      afterRender?.();
-    };
-    if (reducedMotion.matches || typeof document.startViewTransition !== 'function') {
-      update();
-      return;
-    }
-    const transition = document.startViewTransition(update);
-    activeTransition = transition;
-    void transition.ready.catch(() => {});
-    void transition.finished.catch(() => {}).finally(() => {
-      if (activeTransition === transition) activeTransition = undefined;
+    const viewChanged = renderedView !== state.view;
+    if (viewChanged) resetPanelHeight?.();
+    const pending = renderAll();
+    const revision = renderRevision;
+    afterRender?.();
+    if (viewChanged) fadeContent($grid);
+    void pending.then(() => {
+      if (revision !== renderRevision || viewChanged || $right.hidden) return;
+      fadeContent($right);
     });
   }
 
   // ---- Event handlers ----
+  reducedMotion.addEventListener('change', () => {
+    if (!reducedMotion.matches) return;
+    contentAnimation?.cancel();
+    contentAnimation = undefined;
+  });
   mobileLayout.addEventListener('change', () => { renderAll(); });
   window.addEventListener('storage', (event) => {
     if (event.storageArea !== localStorage || (event.key !== FAVORITES_KEY && event.key !== null)) return;
@@ -808,6 +882,8 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     if (!btn) return;
     const code = btn.dataset.code;
     const tid = btn.dataset.tid;
+    const sameSelection = code ? code === state.pickedProduct : tid === state.pickedStation;
+    if (!mobileLayout.matches && sameSelection) return;
     if (code || tid !== state.pickedStation) {
       track('query_completed', {
         query_type: code ? 'product' : 'station',
@@ -816,7 +892,6 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         used_search: Boolean(state.keyword.trim()),
       });
     }
-    const sameSelection = code ? code === state.pickedProduct : tid === state.pickedStation;
     mobileExpanded = mobileLayout.matches ? !sameSelection || !mobileExpanded : true;
     if (code) state.pickedProduct = code;
     if (tid) state.pickedStation = tid;

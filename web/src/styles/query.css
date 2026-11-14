@@ -273,6 +273,9 @@ body {
   border-radius: var(--radius-3xl);
   box-shadow: var(--shadow-3), inset 0 0.5px 0 rgba(255, 255, 255, 0.3);
 }
+.yt-console.is-resizing {
+  overflow: clip;
+}
 .yt-console-grid {
   display: grid;
   grid-template-columns: 0.82fr 1.18fr;
@@ -936,9 +939,6 @@ body {
   }
 }
 
-.yt-console-right {
-  view-transition-name: yt-query-details;
-}
 .yt-seg-btn,
 .yt-filter-btn,
 .yt-favorite,
@@ -948,27 +948,6 @@ body {
 .yt-choice-caret {
   transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-::view-transition {
-  pointer-events: none;
-}
-::view-transition-group(*) {
-  animation-duration: 240ms;
-  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-::view-transition-old(yt-query-details) {
-  animation: yt-query-leave 140ms ease-in both;
-}
-::view-transition-new(yt-query-details) {
-  animation: yt-query-enter 220ms ease-out both;
-}
-@keyframes yt-query-enter {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes yt-query-leave {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(-6px); }
-}
 @media (prefers-reduced-motion: reduce) {
   .yt-seg-btn,
   .yt-filter-btn,
@@ -976,10 +955,5 @@ body {
   .yt-locate-btn--icon,
   .yt-choice-caret {
     transition: none;
-  }
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation-duration: 0s;
   }
 }

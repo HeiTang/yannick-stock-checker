@@ -15,6 +15,10 @@ function element(dataset: Record<string, string> = {}) {
     setAttribute: vi.fn(),
     focus: vi.fn(),
     append: vi.fn(),
+    style: { height: '' },
+    getBoundingClientRect: vi.fn(() => ({ height: 500 })),
+    animate: vi.fn(() => ({ cancel: vi.fn(), finished: new Promise<void>(() => {}) })),
+    querySelector: vi.fn((_selector: string): HTMLElement | null => null),
     after: vi.fn(),
     closest: () => ({ append: vi.fn() }),
     textContent: '',
@@ -137,7 +141,7 @@ async function setup(search = '', countsAvailable = true, storage = new Map<stri
     target: { closest: (selector: string) => selector === '[data-favorite]'
       ? { dataset: { favorite: id, favoriteView: view } } : null },
   });
-  return { input, results, right, grid, resize, motion, clickProduct, counts, clickStation, action, switchToStations, locate,
+  return { root, input, results, right, grid, resize, motion, clickProduct, counts, clickStation, action, switchToStations, locate,
     favorite, favoritesFilter, favoritesStatus, favoritesAll, allCount, favoritesCount, locateButton };
 }
 
@@ -482,65 +486,126 @@ describe('review regressions', () => {
 
 
 describe('query transitions', () => {
-  it('animates selection and skips an unfinished transition on the next action', async () => {
-    const ui = await setup('?s=near', true, new Map(), true);
-    const transition = { skipTransition: vi.fn(), ready: Promise.resolve(), finished: new Promise<void>(() => {}) };
-    const start = vi.fn((update: () => void) => { update(); return transition; });
-    Object.assign(document, { startViewTransition: start });
+  it('fades the live result and cancels the previous effect on a new selection', async () => {
+    const ui = await setup('?s=near');
     ui.clickStation('far');
-    expect(start).toHaveBeenCalledTimes(1);
-    ui.clickStation('far');
-    expect(transition.skipTransition).toHaveBeenCalledOnce();
-    expect(ui.right.hidden).toBe(true);
+    await vi.waitFor(() => expect(ui.right.animate).toHaveBeenCalledOnce());
+    const previous = ui.right.animate.mock.results[0].value;
+    ui.clickStation('near');
+    expect(previous.cancel).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('近站'));
+    expect(ui.right.animate).toHaveBeenLastCalledWith([
+      { opacity: 0.55 }, { opacity: 1 },
+    ], { duration: 160, easing: 'ease-out' });
   });
 
-  it('updates immediately when reduced motion is enabled', async () => {
+  it('updates immediately without opacity effects when reduced motion is enabled', async () => {
+    const ui = await setup('?s=near', true, new Map(), true);
+    ui.motion.matches = true;
+    ui.clickStation('far');
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('遠站'));
+    expect(ui.right.animate).not.toHaveBeenCalled();
+    expect(ui.grid.animate).not.toHaveBeenCalled();
+  });
+
+  it('does not animate an old response over the latest selection', async () => {
+    const ui = await setup('?view=stations');
+    let resolve!: (response: Response) => void;
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => { resolve = r; }));
+    ui.clickStation('far');
+    ui.clickStation('near');
+    await vi.waitFor(() => expect(ui.right.animate).toHaveBeenCalledOnce());
+    resolve({ ok: true, json: async () => ({ stock: [] }) } as Response);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(ui.right.innerHTML).toContain('近站');
+    expect(ui.right.animate).toHaveBeenCalledOnce();
+  });
+});
+
+describe('mobile panel height motion', () => {
+  it('updates mobile accordions without creating snapshot transitions', async () => {
     const ui = await setup('?s=near', true, new Map(), true);
     const start = vi.fn();
     Object.assign(document, { startViewTransition: start });
-    ui.motion.matches = true;
-    ui.clickStation('far');
+    ui.clickStation('near');
     expect(start).not.toHaveBeenCalled();
-    expect(ui.results.innerHTML.match(/aria-expanded="true"/g)).toHaveLength(1);
-    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('遠站'));
+    expect(ui.right.hidden).toBe(true);
   });
 });
 
 
-describe('queued transition updates', () => {
-  it('discards a queued animation update after a newer search render', async () => {
-    const ui = await setup('?s=near', true, new Map(), true);
-    let queued!: () => void;
-    Object.assign(document, {
-      startViewTransition: (update: () => void) => {
-        queued = update;
-        return { skipTransition: vi.fn(), ready: Promise.resolve(), finished: new Promise<void>(() => {}) };
-      },
+describe('real panel sizing', () => {
+  it('animates the live height, retargets an interrupted resize, and clears fixed height for reduced motion', async () => {
+    let resized!: () => void;
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { resized = callback; }
+      observe() {}
     });
-    ui.clickStation('far');
-    ui.input.value = '站';
-    ui.input.dispatch('input');
-    vi.mocked(ui.grid.append).mockClear();
-    queued();
-    expect(ui.grid.append).not.toHaveBeenCalled();
+    vi.stubGlobal('getComputedStyle', () => ({
+      paddingTop: '18px', paddingBottom: '18px', borderTopWidth: '1px', borderBottomWidth: '1px',
+    }));
+    const ui = await setup('?s=near', true, new Map(), true);
+    resized();
+    ui.grid.getBoundingClientRect.mockReturnValue({ height: 200 });
+    resized();
+    expect(ui.root.style.height).toBe('238px');
+    expect(ui.root.animate).toHaveBeenLastCalledWith([
+      { height: '538px' }, { height: '238px' },
+    ], expect.objectContaining({ duration: 240 }));
+    const first = ui.root.animate.mock.results[0].value;
+    ui.root.getBoundingClientRect.mockReturnValue({ height: 400 });
+    ui.grid.getBoundingClientRect.mockReturnValue({ height: 100 });
+    resized();
+    expect(first.cancel).toHaveBeenCalledOnce();
+    expect(ui.root.animate).toHaveBeenLastCalledWith([
+      { height: '400px' }, { height: '138px' },
+    ], expect.any(Object));
+    const second = ui.root.animate.mock.results[1].value;
+    ui.grid.getBoundingClientRect.mockReturnValue({ height: 362 });
+    resized();
+    expect(second.cancel).toHaveBeenCalledOnce();
+    expect(ui.root.style.height).toBe('');
+    ui.motion.matches = true;
+    ui.motion.dispatch('change');
+    resized();
+    expect(ui.root.animate).toHaveBeenCalledTimes(2);
   });
+});
 
-  it('only applies the newest of two queued selection updates', async () => {
-    const ui = await setup('?s=near', true, new Map(), true);
-    const updates: (() => void)[] = [];
-    Object.assign(document, {
-      startViewTransition: (update: () => void) => {
-        updates.push(update);
-        return { skipTransition: vi.fn(), ready: Promise.resolve(), finished: new Promise<void>(() => {}) };
-      },
-    });
-    ui.clickStation('far');
+
+describe('live content motion controls', () => {
+  it('does not replay an effect for an already selected desktop station', async () => {
+    const ui = await setup('?s=near');
     ui.clickStation('near');
-    vi.mocked(ui.grid.append).mockClear();
-    updates[0]();
-    expect(ui.grid.append).not.toHaveBeenCalled();
-    updates[1]();
-    expect(ui.grid.append).toHaveBeenCalledOnce();
-    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('近站'));
+    expect(ui.right.animate).not.toHaveBeenCalled();
+    ui.clickStation('far');
+    await vi.waitFor(() => expect(ui.right.animate).toHaveBeenCalledOnce());
+    const animation = ui.right.animate.mock.results[0].value;
+    ui.motion.matches = true;
+    ui.motion.dispatch('change');
+    expect(animation.cancel).toHaveBeenCalledOnce();
+  });
+});
+
+
+describe('mobile panel minimum height', () => {
+  it('never targets a height below the responsive minimum during a collapse', async () => {
+    let resized!: () => void;
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { resized = callback; }
+      observe() {}
+    });
+    vi.stubGlobal('getComputedStyle', () => ({
+      minHeight: '480px', paddingTop: '18px', paddingBottom: '18px',
+      borderTopWidth: '1px', borderBottomWidth: '1px',
+    }));
+    const ui = await setup('?s=near', true, new Map(), true);
+    resized();
+    ui.grid.getBoundingClientRect.mockReturnValue({ height: 200 });
+    resized();
+    expect(ui.root.style.height).toBe('480px');
+    expect(ui.root.animate).toHaveBeenLastCalledWith([
+      { height: '538px' }, { height: '480px' },
+    ], expect.objectContaining({ duration: 240 }));
   });
 });
