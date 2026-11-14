@@ -1,6 +1,5 @@
 ---
 import '../styles/query.css';
-import { icon } from '../scripts/icon.ts';
 import GoogleAnalytics from '../components/GoogleAnalytics.astro';
 
 const title = '快速查庫存 · 亞尼克・庫存雷達';
@@ -49,7 +48,7 @@ const ogImage = new URL('/og-image.jpg', Astro.site).href;
         <header class="yt-lean-top">
           <div id="yt-brand-mark"></div>
 
-          <div style="line-height:1.12">
+          <div style="line-height:1.12;min-width:0">
             <div class="yt-wordmark">亞尼克・庫存雷達</div>
             <div class="yt-wordmark-sub">快速查詢</div>
           </div>
@@ -62,8 +61,10 @@ const ogImage = new URL('/og-image.jpg', Astro.site).href;
           </div>
 
           <a class="yt-back" href="/">
-            <Fragment set:html={icon('info', { size: 15, weight: 'bold' })} />
-            <span>關於</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-8H9v8H4a1 1 0 0 1-1-1Z" />
+            </svg>
+            <span>首頁</span>
           </a>
 
           <div class="yt-theme">
