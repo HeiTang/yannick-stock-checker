@@ -837,7 +837,13 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   mobileLayout.addEventListener('change', () => { renderAll(); });
   window.addEventListener('storage', (event) => {
     if (event.storageArea !== localStorage || (event.key !== FAVORITES_KEY && event.key !== null)) return;
-    favorites = parseFavorites(event.newValue);
+    try {
+      favorites = parseFavorites(localStorage.getItem(FAVORITES_KEY));
+    } catch {
+      $favoritesStatus.classList.toggle('is-error', true);
+      $favoritesStatus.textContent = '無法讀取收藏，請確認瀏覽器允許儲存網站資料。';
+      return;
+    }
     renderAll();
   });
   $favoritesFilter.addEventListener('click', () => {
@@ -873,40 +879,52 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     renderAll();
   });
 
-  $resultList.addEventListener('click', (e) => {
+  $resultList.addEventListener('click', async (e) => {
     const favorite = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-favorite]');
     if (favorite) {
       const id = favorite.dataset.favorite!;
       const view = favorite.dataset.favoriteView;
       if (view !== 'products' && view !== 'stations') return;
-      try {
-        favorites = parseFavorites(localStorage.getItem(FAVORITES_KEY));
-      } catch {
+      if (!navigator.locks) {
         $favoritesStatus.classList.toggle('is-error', true);
-        $favoritesStatus.textContent = '無法讀取收藏，請確認瀏覽器允許儲存網站資料。';
+        $favoritesStatus.textContent = '此瀏覽器不支援安全儲存收藏，請更新瀏覽器後再試。';
         return;
       }
-      const saved = isFavorite(view, id);
-      const name = view === 'products'
-        ? products.find((p) => p.commodity_code === id)?.product_name
-        : stationById.get(id)?.station_name;
-      if (!saved && !name) return;
-      const next: Favorite[] = saved ? favorites.filter((f) => f.view !== view || f.id !== id)
-        : [...favorites, { view, id, name: name! }];
       try {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+        await navigator.locks.request(FAVORITES_KEY, () => {
+          try {
+            favorites = parseFavorites(localStorage.getItem(FAVORITES_KEY));
+          } catch {
+            $favoritesStatus.classList.toggle('is-error', true);
+            $favoritesStatus.textContent = '無法讀取收藏，請確認瀏覽器允許儲存網站資料。';
+            return;
+          }
+          const saved = isFavorite(view, id);
+          const name = view === 'products'
+            ? products.find((p) => p.commodity_code === id)?.product_name
+            : stationById.get(id)?.station_name;
+          if (!saved && !name) return;
+          const next: Favorite[] = saved ? favorites.filter((f) => f.view !== view || f.id !== id)
+            : [...favorites, { view, id, name: name! }];
+          try {
+            localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+          } catch {
+            $favoritesStatus.classList.toggle('is-error', true);
+            $favoritesStatus.textContent = '無法儲存收藏，請確認瀏覽器允許儲存網站資料。';
+            return;
+          }
+          favorites = next;
+          $favoritesStatus.classList.toggle('is-error', false);
+          $favoritesStatus.textContent = saved ? '已取消收藏' : '已加入我的最愛';
+          renderAll();
+          const selector = `[data-favorite="${CSS.escape(id)}"]`;
+          const nextFocus = $resultList.querySelector<HTMLButtonElement>(selector) ?? $favoritesFilter;
+          nextFocus.focus({ preventScroll: true });
+        });
       } catch {
         $favoritesStatus.classList.toggle('is-error', true);
-        $favoritesStatus.textContent = '無法儲存收藏，請確認瀏覽器允許儲存網站資料。';
-        return;
+        $favoritesStatus.textContent = '無法儲存收藏，請稍後再試。';
       }
-      favorites = next;
-      $favoritesStatus.classList.toggle('is-error', false);
-      $favoritesStatus.textContent = saved ? '已取消收藏' : '已加入我的最愛';
-      renderAll();
-      const selector = `[data-favorite="${CSS.escape(id)}"]`;
-      const nextFocus = $resultList.querySelector<HTMLButtonElement>(selector) ?? $favoritesFilter;
-      nextFocus.focus({ preventScroll: true });
       return;
     }
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button.yt-result');

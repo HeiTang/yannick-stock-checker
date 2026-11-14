@@ -95,6 +95,7 @@ async function setup(search = '', countsAvailable = true, storage = new Map<stri
   });
   vi.stubGlobal('history', { replaceState: vi.fn() });
   vi.stubGlobal('navigator', {
+    locks: { request: vi.fn((_name: string, callback: () => void) => Promise.resolve(callback())) },
     geolocation: {
       getCurrentPosition: (success: PositionCallback) =>
         success({ coords: { latitude: 25, longitude: 121.5 } } as GeolocationPosition),
@@ -461,15 +462,87 @@ describe('review regressions', () => {
   });
 
   it('updates favorites when another tab changes or clears storage', async () => {
-    const ui = await setup('?p=P');
-    const event = (value: string | null, key: string | null = FAVORITES_KEY) =>
+    const storage = new Map<string, string>();
+    const ui = await setup('?p=P', true, storage);
+    const event = (value: string | null, key: string | null = FAVORITES_KEY) => {
+      if (value === null) storage.delete(FAVORITES_KEY);
+      else storage.set(FAVORITES_KEY, value);
       (window as unknown as ReturnType<typeof element>).dispatch('storage', {
         key, newValue: value, storageArea: localStorage,
       });
+    };
     event(JSON.stringify([{ view: 'products', id: 'P', name: '生乳捲' }]));
     expect(ui.results.innerHTML).toContain('取消收藏：生乳捲');
     event(null, null);
     expect(ui.results.innerHTML).toContain('加入我的最愛：生乳捲');
+  });
+
+  it('reads the latest stored favorites instead of replaying an older storage event', async () => {
+    const storage = new Map<string, string>();
+    const ui = await setup('?p=P', true, storage);
+    const olderValue = JSON.stringify([{ view: 'stations', id: 'near', name: '近站' }]);
+    storage.set(FAVORITES_KEY, olderValue);
+    ui.favorite('P');
+    (window as unknown as ReturnType<typeof element>).dispatch('storage', {
+      key: FAVORITES_KEY, newValue: olderValue, storageArea: localStorage,
+    });
+    expect(JSON.parse(storage.get(FAVORITES_KEY)!)).toHaveLength(2);
+    expect(ui.results.innerHTML).toContain('取消收藏：生乳捲');
+  });
+
+  it('reads and writes only inside the shared lock and preserves queued tab updates', async () => {
+    const storage = new Map<string, string>();
+    const firstTab = await setup('?p=P', true, storage);
+    const secondTab = await setup('?view=stations', true, storage);
+    const pending: Array<() => void> = [];
+    const request = vi.fn((_name: string, callback: () => void) => new Promise<void>((resolve) => {
+      pending.push(() => { callback(); resolve(); });
+    }));
+    Object.assign(navigator, { locks: { request } });
+    const read = vi.spyOn(localStorage, 'getItem');
+    firstTab.favorite('P');
+    secondTab.favorite('near', 'stations');
+    expect(request.mock.calls.map(([name]) => name)).toEqual([FAVORITES_KEY, FAVORITES_KEY]);
+    expect(read).not.toHaveBeenCalled();
+    expect(localStorage.setItem).not.toHaveBeenCalled();
+    // Another writer finishes before either queued tab acquires the lock.
+    const other = { view: 'stations', id: 'far', name: '遠站' };
+    storage.set(FAVORITES_KEY, JSON.stringify([other]));
+    pending.shift()!();
+    pending.shift()!();
+    expect(JSON.parse(storage.get(FAVORITES_KEY)!)).toEqual([
+      other, { view: 'products', id: 'P', name: '生乳捲' },
+      { view: 'stations', id: 'near', name: '近站' },
+    ]);
+    await Promise.resolve();
+  });
+
+  it('preserves the visible favorites when storage cannot be read during synchronization', async () => {
+    const ui = await setup('?p=P');
+    ui.favorite('P');
+    vi.spyOn(localStorage, 'getItem').mockImplementation(() => { throw new Error('Blocked'); });
+    (window as unknown as ReturnType<typeof element>).dispatch('storage', {
+      key: FAVORITES_KEY, newValue: null, storageArea: localStorage,
+    });
+    expect(ui.results.innerHTML).toContain('取消收藏：生乳捲');
+    expect(ui.favoritesStatus.textContent).toContain('無法讀取收藏');
+  });
+
+  it('reports lock failures without writing an unlocked snapshot', async () => {
+    const ui = await setup('?p=P');
+    Object.assign(navigator, { locks: { request: vi.fn().mockRejectedValue(new Error('Unavailable')) } });
+    ui.favorite('P');
+    await vi.waitFor(() => expect(ui.favoritesStatus.textContent).toContain('無法儲存收藏'));
+    expect(localStorage.setItem).not.toHaveBeenCalled();
+    expect(ui.results.innerHTML).toContain('加入我的最愛：生乳捲');
+  });
+
+  it('does not risk overwriting favorites when Web Locks is unavailable', async () => {
+    const ui = await setup('?p=P');
+    Object.assign(navigator, { locks: undefined });
+    ui.favorite('P');
+    expect(localStorage.setItem).not.toHaveBeenCalled();
+    expect(ui.favoritesStatus.textContent).toContain('不支援安全儲存收藏');
   });
 
   it('does not show station content while a product response is pending', async () => {
