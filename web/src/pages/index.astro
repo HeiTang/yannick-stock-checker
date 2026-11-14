@@ -95,10 +95,6 @@ const apiEndpoints = [
               <button class="yt-navlink" data-nav="api" type="button">API</button>
             </nav>
             <div style="flex:1"></div>
-            <div class="yt-updated">
-              <span class="yt-pulse"></span>
-              <span>即時 <span id="updated-at">--:--</span></span>
-            </div>
             <div class="yt-quick">
               <a href="/query/" aria-label="快速查詢">
                 <Fragment set:html={icon('magnifying-glass', { size: 15, weight: 'bold' })} />
@@ -294,6 +290,7 @@ const apiEndpoints = [
             <div class="yt-footer-rule"></div>
             <div class="yt-footer-bottom">
               <span>本專案為非官方工具，與亞尼克無官方關聯；相關商標權利屬原權利人所有。</span>
+              <span class="yt-updated">資料更新 <span id="updated-at">--:--</span></span>
               <span>MIT License · © 2026–present</span>
             </div>
           </div>

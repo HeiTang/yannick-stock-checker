@@ -28,10 +28,6 @@ function chevron(size = 13): string {
   return `<span style="display:inline-flex;opacity:0.6">${icon('caret-down', { size, weight: 'bold' })}</span>`;
 }
 
-function check(size = 16): string {
-  return `<span style="color:var(--yt-brand);display:inline-flex">${icon('check-circle', { size, weight: 'fill' })}</span>`;
-}
-
 export interface ThemeMenuOptions {
   buttonSelector: string;
   page: HTMLElement;
@@ -90,21 +86,16 @@ export function initThemeMenu(opts: ThemeMenuOptions): { setDir: (k: ThemeKey) =
       .map((d) => {
         const active = d.key === state.dir ? ' is-active' : '';
         return `
-        <button class="yt-theme-row${active}" type="button" data-dir="${d.key}">
+        <button class="yt-theme-row${active}" type="button" data-dir="${d.key}" aria-pressed="${d.key === state.dir}">
           ${swatchHtml(d.key, 'lg')}
           <span class="nm">${d.label}</span>
-          <span class="ds">${d.desc}</span>
-          ${d.key === state.dir ? check() : ''}
         </button>`;
       })
       .join('');
 
     el.innerHTML = `
-      <div class="yt-theme-cap">主題</div>
-      ${dirRows}
-      <div class="yt-theme-divider"></div>
-      <div class="yt-theme-cap">外觀</div>
-      <div class="yt-seg" role="group" aria-label="外觀模式" style="margin-top:2px">
+      <div class="yt-theme-options" role="group" aria-label="主題色系">${dirRows}</div>
+      <div class="yt-seg" role="group" aria-label="外觀模式">
         <button class="yt-seg-btn${state.mode === 'light' ? ' is-active' : ''}" type="button" data-mode="light" aria-pressed="${state.mode === 'light'}">
           ${modeIcon('light')}<span>淺色</span>
         </button>
