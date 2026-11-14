@@ -619,6 +619,23 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     }
   }
 
+  function updateBranchFades(pills: HTMLElement): void {
+    const maxScroll = Math.max(0, pills.scrollWidth - pills.clientWidth);
+    pills.style.setProperty('--yt-fade-left', pills.scrollLeft > 1 ? '24px' : '0px');
+    pills.style.setProperty('--yt-fade-right', pills.scrollLeft < maxScroll - 1 ? '24px' : '0px');
+  }
+
+  function revealSelectedBranch(pills: HTMLElement): void {
+    const active = pills.querySelector<HTMLElement>('.yt-bpill.is-active');
+    if (active && pills.clientWidth > 0) {
+      const maxScroll = Math.max(0, pills.scrollWidth - pills.clientWidth);
+      pills.scrollLeft = Math.min(maxScroll, Math.max(0,
+        active.offsetLeft - (pills.clientWidth - active.offsetWidth) / 2,
+      ));
+    }
+    updateBranchFades(pills);
+  }
+
   async function renderRightProduct() {
     const product = products.find((p) => p.commodity_code === state.pickedProduct) ?? products[0];
     const expectedView = state.view;
@@ -632,7 +649,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       $right.innerHTML = emptyState('無法載入商品資料', '連線可能暫時中斷，再試一次看看。', 'info', true);
       return;
     }
-    const stationsRaw = detail.stations.map((s) => {
+    const stationsRaw = detail.stations.filter((s) => s.quantity > 0).map((s) => {
       const meta = stationById.get(s.station_id);
       return {
         ...s,
@@ -656,7 +673,10 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       .map((b) => {
         const active = state.branch === b ? ' is-active' : '';
         const label = b === 'all' ? '全部' : b.replace('據點', '');
-        return `<button class="yt-bpill${active}" type="button" data-branch="${escapeHtml(b)}">${escapeHtml(label)}</button>`;
+        const count = b === 'all' ? stationsRaw.length : stationsRaw.filter((s) => s.branch_name === b).length;
+        return `<button class="yt-bpill${active}" type="button" data-branch="${escapeHtml(b)}" aria-pressed="${state.branch === b}">
+          <span>${escapeHtml(label)}</span><span class="yt-bpill-count">${count}</span>
+        </button>`;
       })
       .join('');
     const subText = state.located
@@ -701,7 +721,13 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         <span>${stationsShown.length} 個有貨站點 · 可滾動瀏覽</span>
       </div>
     `;
-
+    if (mobileLayout.matches) {
+      const pills = $right.querySelector<HTMLElement>('.yt-bpills');
+      if (pills) {
+        pills.addEventListener('scroll', () => updateBranchFades(pills), { passive: true });
+        revealSelectedBranch(pills);
+      }
+    }
   }
 
   async function renderStationStock() {
@@ -802,6 +828,11 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     if (!reducedMotion.matches) return;
     contentAnimation?.cancel();
     contentAnimation = undefined;
+  });
+  window.addEventListener('resize', () => {
+    if (!mobileLayout.matches) return;
+    const pills = $right.querySelector<HTMLElement>('.yt-bpills');
+    if (pills) revealSelectedBranch(pills);
   });
   mobileLayout.addEventListener('change', () => { renderAll(); });
   window.addEventListener('storage', (event) => {

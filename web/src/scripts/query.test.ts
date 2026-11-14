@@ -522,6 +522,72 @@ describe('query transitions', () => {
   });
 });
 
+describe('branch stock counts', () => {
+  it('counts stocked stations rather than quantities, retains zero, and ignores the active filter', async () => {
+    const ui = await setup('?s=near');
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        product: { commodity_code: 'P', product_name: '生乳捲' },
+        stations: [
+          { station_id: 'near', station_name: '近站', branch_name: '分區', quantity: 5 },
+          { station_id: 'far', station_name: '遠站', branch_name: '分區', quantity: 0 },
+          { station_id: 'other', station_name: '其他站', branch_name: '其他', quantity: 2 },
+        ],
+      }),
+    } as Response);
+    ui.action('[data-pick-product]', { pickProduct: 'P' });
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('yt-bpill-count'));
+    const counts = () => [...ui.right.innerHTML.matchAll(/data-branch="([^"]+)"[^>]*>\s*<span>[^<]+<\/span><span class="yt-bpill-count">(\d+)<\/span>/g)]
+      .map((m) => [m[1], Number(m[2])]);
+    expect(counts()).toEqual([['all', 2], ['分區', 1]]);
+    ui.action('.yt-bpill', { branch: '分區' });
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('yt-bpill-count'));
+    expect(counts()).toEqual([['all', 2], ['分區', 1]]);
+    expect(ui.right.innerHTML).not.toContain('遠站');
+  });
+
+  it('keeps a branch with no stocked stations visible', async () => {
+    const ui = await setup('?p=P');
+    expect(ui.right.innerHTML).toContain('data-branch="分區"');
+    expect(ui.right.innerHTML).toMatch(/data-branch="分區"[^>]*>\s*<span>分區<\/span><span class="yt-bpill-count">0<\/span>/);
+  });
+});
+
+
+describe('mobile branch strip', () => {
+  it('scrolls the selected branch into the strip without scrolling the page', async () => {
+    const ui = await setup('?s=near', true, new Map(), true);
+    const strip = {
+      ...element(),
+      style: { setProperty: vi.fn() },
+      scrollLeft: 0,
+      scrollWidth: 400,
+      clientWidth: 200,
+      querySelector: () => ({ offsetLeft: 190, offsetWidth: 70 }),
+    };
+    vi.mocked(ui.right.querySelector).mockReturnValue(strip as unknown as HTMLElement);
+    ui.action('[data-pick-product]', { pickProduct: 'P' });
+    await vi.waitFor(() => expect(strip.scrollLeft).toBe(125));
+    expect(strip.style.setProperty).toHaveBeenCalledWith('--yt-fade-left', '24px');
+    expect(strip.style.setProperty).toHaveBeenCalledWith('--yt-fade-right', '24px');
+    strip.scrollLeft = 0;
+    strip.dispatch('scroll');
+    expect(strip.style.setProperty).toHaveBeenLastCalledWith('--yt-fade-right', '24px');
+    expect(strip.style.setProperty).toHaveBeenCalledWith('--yt-fade-left', '0px');
+    strip.scrollLeft = 200;
+    strip.dispatch('scroll');
+    expect(strip.style.setProperty).toHaveBeenLastCalledWith('--yt-fade-right', '0px');
+    strip.scrollWidth = 100;
+    strip.scrollLeft = 0;
+    strip.dispatch('scroll');
+    expect(strip.style.setProperty.mock.calls.slice(-2)).toEqual([
+      ['--yt-fade-left', '0px'], ['--yt-fade-right', '0px'],
+    ]);
+  });
+});
+
+
 describe('mobile panel height motion', () => {
   it('updates mobile accordions without creating snapshot transitions', async () => {
     const ui = await setup('?s=near', true, new Map(), true);

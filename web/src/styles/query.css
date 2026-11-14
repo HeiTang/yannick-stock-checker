@@ -497,6 +497,10 @@ body {
   margin-bottom: 4px;
 }
 .yt-bpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
   border: 1px solid var(--yt-hairline);
   background: color-mix(in srgb, var(--yt-ink) 4%, transparent);
   color: var(--yt-ink-2);
@@ -507,6 +511,12 @@ body {
   padding: 6px 13px;
   border-radius: 999px;
   transition: all 0.18s;
+}
+.yt-bpill-count {
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
 }
 .yt-bpill:hover {
   color: var(--yt-ink);
@@ -728,6 +738,26 @@ body {
     padding: 0 12px 12px;
     border: none;
     border-radius: 0;
+  }
+  .yt-query-item > .yt-console-right:has(> .yt-bpills) {
+    padding-top: 12px;
+    gap: 8px;
+  }
+  .yt-query-item .yt-bpills {
+    position: relative;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    min-width: 0;
+    margin-bottom: 0;
+    padding-block: 2px;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, transparent, black var(--yt-fade-left, 0px), black calc(100% - var(--yt-fade-right, 0px)), transparent);
+  }
+  .yt-query-item .yt-bpills::-webkit-scrollbar {
+    display: none;
+  }
+  .yt-query-item .yt-bpill {
+    flex-shrink: 0;
   }
   .yt-query-item .yt-srows {
     gap: 0;
