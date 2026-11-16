@@ -51,3 +51,24 @@ def test_mount_static_files_when_dist_missing():
         with patch.object(test_app, "mount") as mock_mount:
             app.main.mount_static_files(test_app)
             mock_mount.assert_not_called()
+
+
+def test_frontend_cache_policy(tmp_path):
+    (tmp_path / "index.html").write_text("<h1>Home</h1>")
+    (tmp_path / "_astro").mkdir()
+    (tmp_path / "_astro" / "app.hash.js").write_text("export {};")
+    test_app = FastAPI()
+    test_app.mount("/", app.main.FrontendStaticFiles(directory=tmp_path, html=True))
+    with TestClient(test_app) as client:
+        html = client.get("/")
+        assert html.status_code == 200
+        assert html.headers["cache-control"] == "no-cache"
+        unchanged = client.get("/", headers={"If-None-Match": html.headers["etag"]})
+        assert unchanged.status_code == 304
+        assert unchanged.headers["cache-control"] == "no-cache"
+        asset = client.get("/_astro/app.hash.js")
+        assert asset.status_code == 200
+        assert asset.headers["cache-control"] == "public, max-age=31536000, immutable"
+        missing = client.get("/_astro/old.hash.css")
+        assert missing.status_code == 404
+        assert missing.headers["cache-control"] == "no-store"

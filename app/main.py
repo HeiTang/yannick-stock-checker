@@ -11,6 +11,9 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException
+from starlette.responses import Response
+from starlette.types import Scope
 
 from app.api.routes import get_cache, router as api_router
 from app.config import settings
@@ -79,12 +82,32 @@ app.include_router(api_router)
 # Static files for web frontend (Phase 3)
 
 
+class FrontendStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        try:
+            response = await super().get_response(path, scope)
+        except HTTPException as exc:
+            # Missing deployment assets must not become cached CDN failures.
+            exc.headers = {**(exc.headers or {}), "Cache-Control": "no-store"}
+            raise
+        if response.status_code >= 400:
+            response.headers["Cache-Control"] = "no-store"
+        elif path.startswith("_astro/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            # Revalidate HTML before reusing its versioned script URLs.
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 def mount_static_files(target_app: FastAPI) -> None:
     """Mount the web frontend static files if dist/ exists."""
     dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web", "dist")
     if os.path.exists(dist_path):
         target_app.mount(
-            "/", StaticFiles(directory=dist_path, html=True), name="static"
+            "/",
+            FrontendStaticFiles(directory=dist_path, html=True),
+            name="static",
         )
     else:
         logger.warning(
