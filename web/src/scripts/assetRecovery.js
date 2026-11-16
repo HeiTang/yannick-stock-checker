@@ -46,10 +46,16 @@
     try {
       for (const asset of pending) {
         pending.delete(asset);
-        const response = await fetch(asset, {
-          method: 'HEAD', cache: 'no-store', redirect: 'error',
-          signal: AbortSignal.timeout(5000),
-        });
+        let response;
+        try {
+          response = await fetch(asset, {
+            method: 'HEAD', cache: 'no-store', redirect: 'error',
+            signal: AbortSignal.timeout(5000),
+          });
+        } catch {
+          // One failed check must not skip other queued resources.
+          continue;
+        }
         if (response.status !== 404 && response.status !== 410) continue;
         // Never reset this budget automatically: it survives reloads and both routes.
         if (sessionStorage.getItem(reloadKey)) break;
@@ -59,7 +65,7 @@
         return;
       }
     } catch {
-      // Offline, storage blocked, or an unconfirmed failure requires a manual retry.
+      // Storage blocked or an unconfirmed reload marker requires a manual retry.
     } finally {
       checking = false;
     }

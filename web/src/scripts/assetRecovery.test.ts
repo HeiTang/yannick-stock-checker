@@ -102,6 +102,18 @@ describe('inline asset recovery', () => {
     expect(p.fetch).toHaveBeenCalledTimes(2);
   });
 
+  it('checks the next missing resource after an earlier HEAD request fails', async () => {
+    const p = page();
+    p.fetch.mockRejectedValueOnce(new Error('network failure')).mockResolvedValueOnce({ status: 404 });
+    p.scriptError();
+    p.cssError();
+    await vi.waitFor(() => expect(p.reload).toHaveBeenCalledTimes(1));
+    expect(p.fetch).toHaveBeenCalledTimes(2);
+    expect(p.fetch.mock.calls[1][0]).toBe('https://example.test/_astro/page.abc12345.css');
+    expect(p.storage.get(key)).toBe('1');
+    expect(p.body.append).not.toHaveBeenCalled();
+  });
+
   it('handles Vite dynamic import failures and 410 responses', async () => {
     const p = page({ status: 410 });
     p.listeners.get('vite:preloadError')!({ payload: new Error(`Failed to fetch dynamically imported module: ${asset}`) });
