@@ -3,7 +3,7 @@
 	<p align="center">
 		<img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11" />
 		<img src="https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
-		<img src="https://img.shields.io/badge/Astro-6.1-FF5D01?style=flat-square&logo=astro&logoColor=white" alt="Astro" />
+		<img src="https://img.shields.io/badge/Astro-7.4-FF5D01?style=flat-square&logo=astro&logoColor=white" alt="Astro" />
 		<img src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
 		<img src="coverage.svg" alt="Coverage report" />
 	</p>
@@ -52,7 +52,7 @@
 
 2. 安裝前端依賴並建置
 
-	> ⚠️ 需要 Node.js >= 22.12.0
+	> ⚠️ 需要 Node.js >= 22.23.4
 
 	```bash
 	cd web

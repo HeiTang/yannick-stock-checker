@@ -1,6 +1,7 @@
 ---
 import '../styles/query.css';
 import GoogleAnalytics from '../components/GoogleAnalytics.astro';
+import AssetRecovery from '../components/AssetRecovery.astro';
 
 const title = '快速查庫存 · 亞尼克・庫存雷達';
 const description =
@@ -12,8 +13,9 @@ const ogImage = new URL('/og-image.jpg', Astro.site).href;
 <!doctype html>
 <html lang="zh-Hant">
   <head>
-    <GoogleAnalytics />
     <meta charset="UTF-8" />
+    <AssetRecovery />
+    <GoogleAnalytics />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
