@@ -697,6 +697,18 @@ body {
 
 .yt-choice-caret {
   display: none;
+  width: 14px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+}
+.yt-choice-caret::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
 }
 
 /* ---------- Responsive ---------- */
@@ -944,7 +956,7 @@ body {
 
 .yt-result:focus-visible {
   outline: 2px solid var(--yt-brand);
-  outline-offset: 2px;
+  outline-offset: -3px;
 }
 
 .yt-choice > .yt-result-count,

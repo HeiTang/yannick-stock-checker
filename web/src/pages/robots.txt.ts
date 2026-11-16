@@ -14,6 +14,10 @@ export const GET: APIRoute = ({ site }) => {
     'User-agent: *',
     'Allow: /',
     'Disallow: /api/',
+    // Rendering the public inventory requires these read-only endpoints.
+    'Allow: /api/products',
+    'Allow: /api/stations',
+    'Allow: /api/status$',
     '',
     `Sitemap: ${sitemap}`,
     '',

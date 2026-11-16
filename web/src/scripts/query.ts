@@ -568,7 +568,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
               <span class="yt-result-flavor">${escapeHtml(flavorOf(p.product_name))}</span>
             </span>
             <span class="yt-result-count">${p.available_stations} 站</span>
-            <span class="yt-choice-caret" aria-hidden="true">${icon('caret-down', { size: 14 })}</span>
+            <span class="yt-choice-caret" aria-hidden="true"></span>
           </div>
           </div>`;
         })
@@ -609,7 +609,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
               ${distance ? `<span class="yt-result-count">${distance}</span>` : ''}
               <span class="yt-result-count" data-count="${escapeHtml(s.station_id)}">${countLabel}</span>
             </span>
-            <span class="yt-choice-caret" aria-hidden="true">${icon('caret-down', { size: 14 })}</span>
+            <span class="yt-choice-caret" aria-hidden="true"></span>
           </div>
           </div>`;
         })
