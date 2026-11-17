@@ -15,7 +15,7 @@ function element(dataset: Record<string, string> = {}) {
     setAttribute: vi.fn(),
     focus: vi.fn(),
     append: vi.fn(),
-    style: { height: '' },
+    style: { height: '', minHeight: '' },
     getBoundingClientRect: vi.fn(() => ({ height: 500 })),
     animate: vi.fn(() => ({ cancel: vi.fn(), finished: new Promise<void>(() => {}) })),
     querySelector: vi.fn((_selector: string): HTMLElement | null => null),
@@ -85,7 +85,8 @@ async function setup(search = '', countsAvailable = true, storage = new Map<stri
     available_stations: 3,
   };
   vi.stubGlobal('document', { querySelector: () => root });
-  vi.stubGlobal('window', { ...element(), matchMedia: (query: string) => query.includes('reduced-motion') ? motion : media });
+  vi.stubGlobal('window', { ...element(), innerWidth: mobile ? 402 : 1200, innerHeight: 844, visualViewport: element(),
+    matchMedia: (query: string) => query.includes('reduced-motion') ? motion : media });
   vi.stubGlobal('alert', vi.fn());
   vi.stubGlobal('CSS', { escape: (s: string) => s });
   vi.stubGlobal('location', { search, pathname: '/query/', hash: '' });
@@ -610,17 +611,87 @@ describe('review regressions', () => {
 
 
 describe('query transitions', () => {
-  it('fades the live result and cancels the previous effect on a new selection', async () => {
+  it.each(['products', 'stations'] as const)('reopens cached %s without a loading placeholder', async (view) => {
+    const ui = await setup(view === 'products' ? '?view=products' : '?s=near', true, new Map(), true);
+    const toggle = () => view === 'products' ? ui.clickProduct('P') : ui.clickStation('near');
+    if (view === 'products') {
+      toggle();
+      await vi.waitFor(() => expect(ui.right.innerHTML).toContain('個站點仍有現貨'));
+    }
+    toggle();
+    expect(ui.right.hidden).toBe(true);
+    let html = ui.right.innerHTML;
+    const writes: string[] = [];
+    Object.defineProperty(ui.right, 'innerHTML', {
+      get: () => html,
+      set: (value: string) => { writes.push(value); html = value; },
+    });
+    toggle();
+    await vi.waitFor(() => expect(writes.length).toBeGreaterThan(0));
+    expect(writes.every((value) => !value.includes('載入庫存中'))).toBe(true);
+    expect(ui.right.style.minHeight).toBe('');
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false');
+    expect(ui.right.animate).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])('reserves loading space and releases it on completion (ok=%s)', async (ok) => {
+    const ui = await setup('?s=near', true, new Map(), true);
+    let resolve!: (response: Response) => void;
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => { resolve = r; }));
+    ui.clickStation('far');
+    expect(ui.right.style.minHeight).toBe('500px');
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'true');
+    expect(ui.right.innerHTML).toContain('載入庫存中');
+    resolve({ ok, json: async () => ({ stock: [] }) } as Response);
+    await vi.waitFor(() => expect(ui.right.style.minHeight).toBe(''));
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false');
+    expect(ui.right.innerHTML).not.toContain('載入庫存中');
+  });
+
+  it.each((['products', 'stations'] as const).flatMap((view) =>
+    (['rotation', 'breakpoint-first', 'resize-first', 'desktop-to-mobile', 'toolbar'] as const).map((change) => [view, change] as const),
+  ))('invalidates loading height only for layout changes in %s (%s)', async (view, change) => {
+    const ui = await setup('?s=near', true, new Map(), change !== 'desktop-to-mobile');
+    let resolve!: (response: Response) => void;
+    vi.mocked(fetch).mockReturnValue(new Promise<Response>((r) => { resolve = r; }));
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else ui.clickStation('far');
+    expect(ui.right.style.minHeight).toBe('500px');
+    // Clearing the reservation must happen before measuring the new layout.
+    ui.right.getBoundingClientRect.mockImplementation(() => ({
+      height: parseFloat(ui.right.style.minHeight) || 120,
+    }));
+    const browserWindow = window as unknown as ReturnType<typeof element>;
+    if (change === 'toolbar') {
+      Object.assign(window, { innerHeight: 730 });
+      (window.visualViewport as unknown as ReturnType<typeof element>).dispatch('resize');
+      browserWindow.dispatch('resize');
+      expect(ui.right.style.minHeight).toBe('500px');
+    } else {
+      Object.assign(window, { innerWidth: change === 'rotation' ? 874 : change === 'desktop-to-mobile' ? 402 : 1200 });
+      if (change === 'breakpoint-first') ui.resize(false);
+      if (change === 'desktop-to-mobile') ui.resize(true);
+      browserWindow.dispatch('resize');
+      if (change === 'resize-first') ui.resize(false);
+      expect(parseFloat(ui.right.style.minHeight) || 0).toBeLessThanOrEqual(120);
+    }
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'true');
+    expect(ui.right.innerHTML).toContain('載入庫存中');
+    resolve({ ok: true, json: async () => view === 'products'
+      ? { stations: [], total_quantity: 0 } : { stock: [] } } as Response);
+    await vi.waitFor(() => expect(ui.right.innerHTML).not.toContain('載入庫存中'));
+    expect(ui.right.style.minHeight).toBe('');
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false');
+  });
+
+  it('updates selections without dimming the result', async () => {
     const ui = await setup('?s=near');
     ui.clickStation('far');
-    await vi.waitFor(() => expect(ui.right.animate).toHaveBeenCalledOnce());
-    const previous = ui.right.animate.mock.results[0].value;
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('遠站'));
     ui.clickStation('near');
-    expect(previous.cancel).toHaveBeenCalledOnce();
     await vi.waitFor(() => expect(ui.right.innerHTML).toContain('近站'));
-    expect(ui.right.animate).toHaveBeenLastCalledWith([
-      { opacity: 0.55 }, { opacity: 1 },
-    ], { duration: 160, easing: 'ease-out' });
+    expect(ui.right.animate).not.toHaveBeenCalled();
+    expect(ui.grid.animate).not.toHaveBeenCalled();
   });
 
   it('updates immediately without opacity effects when reduced motion is enabled', async () => {
@@ -638,11 +709,11 @@ describe('query transitions', () => {
     vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => { resolve = r; }));
     ui.clickStation('far');
     ui.clickStation('near');
-    await vi.waitFor(() => expect(ui.right.animate).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('近站'));
     resolve({ ok: true, json: async () => ({ stock: [] }) } as Response);
     await new Promise((r) => setTimeout(r, 0));
     expect(ui.right.innerHTML).toContain('近站');
-    expect(ui.right.animate).toHaveBeenCalledOnce();
+    expect(ui.right.animate).not.toHaveBeenCalled();
   });
 });
 
@@ -725,6 +796,30 @@ describe('mobile panel height motion', () => {
 
 
 describe('real panel sizing', () => {
+  it('does not animate thousands of pixels and cancels height on viewport changes', async () => {
+    let resized!: () => void;
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { resized = callback; }
+      observe() {}
+    });
+    vi.stubGlobal('getComputedStyle', () => ({
+      paddingTop: '18px', paddingBottom: '18px', borderTopWidth: '1px', borderBottomWidth: '1px',
+    }));
+    const ui = await setup('?s=near', true, new Map(), true);
+    resized();
+    ui.grid.getBoundingClientRect.mockReturnValue({ height: 4000 });
+    resized();
+    expect(ui.root.animate).not.toHaveBeenCalled();
+    expect(ui.root.style.height).toBe('');
+    ui.grid.getBoundingClientRect.mockReturnValue({ height: 3800 });
+    resized();
+    const animation = ui.root.animate.mock.results[0].value;
+    const viewport = window.visualViewport as unknown as ReturnType<typeof element>;
+    viewport.dispatch('resize');
+    expect(animation.cancel).toHaveBeenCalledOnce();
+    expect(ui.root.style.height).toBe('');
+  });
+
   it('animates the live height, retargets an interrupted resize, and clears fixed height for reduced motion', async () => {
     let resized!: () => void;
     vi.stubGlobal('ResizeObserver', class {
@@ -769,11 +864,10 @@ describe('live content motion controls', () => {
     ui.clickStation('near');
     expect(ui.right.animate).not.toHaveBeenCalled();
     ui.clickStation('far');
-    await vi.waitFor(() => expect(ui.right.animate).toHaveBeenCalledOnce());
-    const animation = ui.right.animate.mock.results[0].value;
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('遠站'));
     ui.motion.matches = true;
     ui.motion.dispatch('change');
-    expect(animation.cancel).toHaveBeenCalledOnce();
+    expect(ui.right.animate).not.toHaveBeenCalled();
   });
 });
 

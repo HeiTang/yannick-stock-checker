@@ -236,9 +236,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   const mobileLayout = window.matchMedia('(max-width: 940px)');
   let mobileExpanded = hasDeepLink;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let contentAnimation: Animation | undefined;
   let renderedView = state.view;
-  let renderRevision = 0;
 
   // ---- DOM ----
   let consoleEl: HTMLElement = root;
@@ -339,7 +337,8 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         previousHeight = nextHeight;
         return;
       }
-      if (fromHeight === undefined || Math.abs(nextHeight - fromHeight) < 1) {
+      if (fromHeight === undefined || Math.abs(nextHeight - fromHeight) < 1 ||
+          Math.abs(nextHeight - fromHeight) > window.innerHeight) {
         heightAnimation?.cancel();
         heightAnimation = undefined;
         consoleEl.style.height = '';
@@ -364,6 +363,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     observer.observe($grid);
     mobileLayout.addEventListener('change', resetHeight);
     reducedMotion.addEventListener('change', resetHeight);
+    window.visualViewport?.addEventListener('resize', resetHeight);
   }
 
   // ---- Helpers ----
@@ -636,15 +636,23 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     updateBranchFades(pills);
   }
 
-  async function renderRightProduct() {
+  function setDetailBusy(busy: boolean, previousHeight = 0): void {
+    $right.setAttribute('aria-busy', String(busy));
+    $right.style.minHeight = busy && previousHeight > 0 ? `${previousHeight}px` : '';
+  }
+
+  async function renderRightProduct(previousHeight: number) {
     const product = products.find((p) => p.commodity_code === state.pickedProduct) ?? products[0];
     const expectedView = state.view;
     const expectedCode = product.commodity_code;
-    $right.innerHTML = emptyState('載入庫存中…', '正在取得目前庫存，請稍候。', 'cards');
+    const loading = !productDetailCache.has(product.commodity_code);
+    setDetailBusy(loading, previousHeight);
+    if (loading) $right.innerHTML = emptyState('載入庫存中…', '正在取得目前庫存，請稍候。', 'cards');
     const detail = await loadProductDetail(product.commodity_code);
     // Guard against stale render: user may have switched view/product
     // between dispatch and await resolution.
     if (state.view !== expectedView || state.pickedProduct !== expectedCode) return;
+    setDetailBusy(false);
     if (!detail) {
       $right.innerHTML = emptyState('無法載入商品資料', '連線可能暫時中斷，再試一次看看。', 'info', true);
       return;
@@ -730,7 +738,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     }
   }
 
-  async function renderStationStock() {
+  async function renderStationStock(previousHeight: number) {
     const tid = state.pickedStation;
     const station = stationById.get(tid);
     if (!station) return;
@@ -738,9 +746,12 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       <div class="yt-panel-title">${escapeHtml(station.station_name)}</div>
       <div class="yt-panel-sub">${escapeHtml(station.station_addr)}</div>
     </div></div>`;
-    $right.innerHTML = heading + emptyState('載入庫存中…', '正在取得目前庫存，請稍候。', 'cards');
+    const loading = !stationDetailCache.has(tid);
+    setDetailBusy(loading, previousHeight);
+    if (loading) $right.innerHTML = heading + emptyState('載入庫存中…', '正在取得目前庫存，請稍候。', 'cards');
     const rows = await loadStationDetail(tid);
     if (state.view !== 'stations' || state.pickedStation !== tid) return;
+    setDetailBusy(false);
     if (!rows) {
       $right.innerHTML = heading + emptyState('無法載入站點資料', '連線可能暫時中斷，再試一次看看。', 'info', true);
       return;
@@ -779,16 +790,14 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   }
 
   async function renderAll() {
-    contentAnimation?.cancel();
-    contentAnimation = undefined;
     renderedView = state.view;
+    const previousDetailHeight = $right.hidden ? 0 : $right.getBoundingClientRect().height;
     const fromHeight = panelHeightReady && mobileLayout.matches && !reducedMotion.matches
       ? consoleEl.getBoundingClientRect().height : undefined;
     if (fromHeight !== undefined) {
       consoleEl.style.height = `${fromHeight}px`;
       consoleEl.classList.toggle('is-resizing', true);
     }
-    renderRevision++;
     // Preserve the shared panel before replacing the mobile list markup.
     $grid.append($right);
     renderSeg();
@@ -796,45 +805,39 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     renderUnavailableFavorites();
     $clear.hidden = state.keyword === '';
     const details = placeDetails()
-      ? state.view === 'products' ? renderRightProduct() : renderStationStock()
+      ? state.view === 'products' ? renderRightProduct(previousDetailHeight) : renderStationStock(previousDetailHeight)
       : undefined;
     if (fromHeight !== undefined) resizePanel?.(fromHeight);
     await details;
   }
 
-  function fadeContent(target: HTMLElement): void {
-    if (reducedMotion.matches || typeof target.animate !== 'function') return;
-    contentAnimation?.cancel();
-    contentAnimation = target.animate([{ opacity: 0.55 }, { opacity: 1 }], {
-      duration: 160, easing: 'ease-out',
-    });
-  }
-
   function renderWithMotion(afterRender?: () => void): void {
-    const viewChanged = renderedView !== state.view;
-    if (viewChanged) resetPanelHeight?.();
-    const pending = renderAll();
-    const revision = renderRevision;
+    if (renderedView !== state.view) resetPanelHeight?.();
+    void renderAll();
     afterRender?.();
-    if (viewChanged) fadeContent($grid);
-    void pending.then(() => {
-      if (revision !== renderRevision || viewChanged || $right.hidden) return;
-      fadeContent($right);
-    });
   }
 
   // ---- Event handlers ----
-  reducedMotion.addEventListener('change', () => {
-    if (!reducedMotion.matches) return;
-    contentAnimation?.cancel();
-    contentAnimation = undefined;
-  });
+  let detailLayoutWidth = window.innerWidth;
+  let detailLayoutMobile = mobileLayout.matches;
+  function resetDetailHeightForLayout(): void {
+    if (detailLayoutWidth === window.innerWidth && detailLayoutMobile === mobileLayout.matches) return;
+    detailLayoutWidth = window.innerWidth;
+    detailLayoutMobile = mobileLayout.matches;
+    // Toolbar height changes must keep the loading reservation.
+    $right.style.minHeight = '';
+  }
   window.addEventListener('resize', () => {
+    resetPanelHeight?.();
+    resetDetailHeightForLayout();
     if (!mobileLayout.matches) return;
     const pills = $right.querySelector<HTMLElement>('.yt-bpills');
     if (pills) revealSelectedBranch(pills);
   });
-  mobileLayout.addEventListener('change', () => { renderAll(); });
+  mobileLayout.addEventListener('change', () => {
+    resetDetailHeightForLayout();
+    renderAll();
+  });
   window.addEventListener('storage', (event) => {
     if (event.storageArea !== localStorage || (event.key !== FAVORITES_KEY && event.key !== null)) return;
     try {
