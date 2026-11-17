@@ -106,6 +106,9 @@ body {
   color: var(--yt-ink-3);
   border-top: 1px solid var(--yt-hairline);
 }
+.yt-foot-separator {
+  display: none;
+}
 
 .yt-wordmark {
   font-size: 16px;
@@ -732,6 +735,18 @@ body {
   }
 }
 @media (max-width: 940px) {
+  .yt-query-page > .yt-page {
+    isolation: isolate;
+    background: none;
+  }
+  .yt-query-page > .yt-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: var(--yt-bg);
+    pointer-events: none;
+  }
   .yt-console--lean {
     flex: 1 0 auto;
   }
@@ -821,8 +836,20 @@ body {
     padding-left: 16px;
     padding-right: 16px;
   }
+  .yt-lean-top {
+    padding-bottom: 10px;
+  }
+  .yt-lean-main {
+    padding-top: 12px;
+  }
   .yt-lean-foot {
-    flex-direction: column;
+    gap: 6px;
+  }
+  .yt-foot-extra {
+    display: none;
+  }
+  .yt-foot-separator {
+    display: inline;
   }
 }
 
