@@ -265,20 +265,24 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   consoleEl.innerHTML = `
     <div class="yt-console-grid">
       <div class="yt-console-left">
-        <div class="yt-seg" role="group" aria-label="查詢視角">
-          <button class="yt-seg-btn" data-view="products" type="button" aria-pressed="false">
-            ${icon('cards', { size: 15, weight: 'bold' })}<span>商品視角</span>
-          </button>
-          <button class="yt-seg-btn" data-view="stations" type="button" aria-pressed="false">
-            ${icon('map-pin', { size: 15, weight: 'bold' })}<span>站點視角</span>
-          </button>
-        </div>
-        <div class="yt-search">
-          ${icon('magnifying-glass', { size: 18, weight: 'bold' })}
-          <input class="yt-search-input" type="text" aria-label="搜尋" />
-          <button class="yt-search-clear" type="button" aria-label="清除" hidden>
-            ${icon('x', { size: 14, weight: 'bold' })}
-          </button>
+        <div class="yt-query-controls">
+          <div class="yt-seg" role="group" aria-label="查詢視角">
+            <button class="yt-seg-btn" data-view="products" type="button" aria-pressed="false">
+              ${icon('cards', { size: 15, weight: 'bold' })}<span>商品視角</span>
+            </button>
+            <button class="yt-seg-btn" data-view="stations" type="button" aria-pressed="false">
+              ${icon('map-pin', { size: 15, weight: 'bold' })}<span>站點視角</span>
+            </button>
+          </div>
+          <div class="yt-search">
+            <label class="yt-search-field">
+              ${icon('magnifying-glass', { size: 18, weight: 'bold' })}
+              <input class="yt-search-input" type="text" aria-label="搜尋" />
+            </label>
+            <button class="yt-search-clear" type="button" aria-label="清除" hidden>
+              ${icon('x', { size: 14, weight: 'bold' })}
+            </button>
+          </div>
         </div>
         <div class="yt-list-head">
           <div class="yt-list-filter" role="group" aria-label="清單篩選與定位">
@@ -520,10 +524,13 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       btn.classList.toggle('is-active', isActive);
       btn.setAttribute('aria-pressed', String(isActive));
     });
-    $input.placeholder =
-      state.view === 'products'
+    if (mobileLayout.matches) {
+      $input.placeholder = state.view === 'products' ? '搜尋商品名稱或代碼' : '搜尋站點或地址';
+    } else {
+      $input.placeholder = state.view === 'products'
         ? '搜尋生乳捲、抹茶、巴斯克、商品代碼…'
         : '搜尋龍山寺、巨蛋、門市、地址或分區…';
+    }
     if ($sectionSub) $sectionSub.textContent = VIEW_SUBS[state.view];
   }
 

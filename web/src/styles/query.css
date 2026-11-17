@@ -323,6 +323,11 @@ body {
 }
 
 /* ---------- Segmented control ---------- */
+.yt-query-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
 .yt-seg {
   display: flex;
   gap: 4px;
@@ -367,6 +372,17 @@ body {
   background: color-mix(in srgb, var(--yt-ink) 5%, transparent);
   border: 1px solid var(--yt-hairline);
 }
+.yt-search:focus-within {
+  outline: 2px solid var(--yt-brand);
+  outline-offset: 2px;
+}
+.yt-search-field {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
 .yt-search-input {
   flex: 1;
   min-width: 0;
@@ -388,6 +404,9 @@ body {
   display: flex;
   padding: 4px;
   border-radius: 999px;
+}
+.yt-search-clear[hidden] {
+  display: none;
 }
 .yt-search-clear:hover {
   color: var(--yt-ink);
@@ -752,6 +771,30 @@ body {
   }
   .yt-console-grid {
     grid-template-columns: 1fr;
+  }
+  .yt-query-controls {
+    gap: 8px;
+  }
+  .yt-query-controls > :is(.yt-seg, .yt-search) {
+    height: 44px;
+    border-radius: 14px;
+  }
+  .yt-search {
+    gap: 0;
+    padding: 0;
+  }
+  .yt-search-field {
+    align-self: stretch;
+    padding: 0 12px;
+  }
+  .yt-search-input {
+    font-size: 16px;
+  }
+  .yt-search-clear {
+    width: 44px;
+    align-self: stretch;
+    align-items: center;
+    justify-content: center;
   }
   .yt-console-right {
     border-left: none;
