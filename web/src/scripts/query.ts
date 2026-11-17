@@ -288,7 +288,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
           <div class="yt-list-filter" role="group" aria-label="清單篩選與定位">
             <button class="yt-filter-btn" type="button" data-favorites-all aria-pressed="true">全部 <span class="yt-filter-count" data-all-count></span></button>
             <button class="yt-filter-btn" type="button" data-favorites-filter aria-pressed="false">我的最愛 <span class="yt-filter-count" data-favorites-count></span></button>
-            <button class="yt-locate-btn yt-locate-btn--icon" type="button" data-locate></button>
+            <button class="yt-locate-btn" type="button" data-locate></button>
           </div>
         </div>
         <div class="yt-feedback" data-favorites-status role="status" aria-live="polite"></div>
@@ -515,10 +515,10 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     $locate.setAttribute('aria-busy', String(isLocating));
     $locate.title = isLocating ? '定位中…'
       : state.located ? '已依距離排序（直線距離），點擊關閉定位' : '定位並依距離排序';
-    $locate.setAttribute('aria-label', $locate.title);
-    $locate.innerHTML = isLocating
+    const locateIcon = isLocating
       ? '<svg class="yt-location-spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="40 18" /></svg>'
-      : icon('map-pin', { size: 18, weight: state.located ? 'fill' : 'bold' });
+      : icon('crosshair', { size: 18, weight: state.located ? 'fill' : 'bold' });
+    $locate.innerHTML = `${locateIcon}<span>找附近</span>`;
     $segBtns.forEach((btn) => {
       const isActive = btn.dataset.view === state.view;
       btn.classList.toggle('is-active', isActive);
