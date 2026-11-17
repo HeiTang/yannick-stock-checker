@@ -780,7 +780,7 @@ body {
     border: none;
     border-radius: 0;
   }
-  .yt-query-item > .yt-console-right:has(> .yt-bpills) {
+  .yt-query-item > .yt-console-right:has(> .yt-bpills:not([hidden])) {
     padding-top: 12px;
     gap: 8px;
   }
@@ -1033,4 +1033,8 @@ body {
   .yt-choice-caret {
     transition: none;
   }
+}
+
+.yt-console-right > [hidden] {
+  display: none;
 }
