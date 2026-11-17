@@ -1,12 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { initQueryConsole } from './query';
+import { initQueryConsole, type InitOptions } from './query';
 import { FAVORITES_KEY } from './favorites';
+
+vi.mock('./queryPanel', () => ({
+  patchQueryPart: (target: { innerHTML: string }, html: string) => { target.innerHTML = html; },
+}));
 
 function element(dataset: Record<string, string> = {}) {
   const listeners = new Map<string, (event: unknown) => void>();
   return {
     dataset,
     innerHTML: '',
+    children: [] as HTMLElement[],
+    scrollTop: 0, scrollHeight: 0, clientHeight: 0,
     value: '',
     hidden: false,
     disabled: false,
@@ -15,7 +21,8 @@ function element(dataset: Record<string, string> = {}) {
     setAttribute: vi.fn(),
     focus: vi.fn(),
     append: vi.fn(),
-    style: { height: '' },
+    contains: vi.fn(() => true),
+    style: { height: '', minHeight: '' },
     getBoundingClientRect: vi.fn(() => ({ height: 500 })),
     animate: vi.fn(() => ({ cancel: vi.fn(), finished: new Promise<void>(() => {}) })),
     querySelector: vi.fn((_selector: string): HTMLElement | null => null),
@@ -28,12 +35,24 @@ function element(dataset: Record<string, string> = {}) {
   };
 }
 
-async function setup(search = '', countsAvailable = true, storage = new Map<string, string>(), mobile = false) {
+async function setup(search = '', countsAvailable = true, storage = new Map<string, string>(), mobile = false, options: InitOptions = {}, productCodes = ['P']) {
   const productButton = element({ view: 'products' });
   const stationButton = element({ view: 'stations' });
   const input = element();
   const results = element();
   const right = { ...element(), id: 'query-console-details' };
+  const detailHead = element();
+  const detailRows = element();
+  const detailFoot = element();
+  const detailPills = { ...element(), scrollLeft: 0, scrollWidth: 0, clientWidth: 0,
+    style: { ...element().style, setProperty: vi.fn() } };
+  const parts = { '.yt-panel-head': detailHead, '.yt-bpills': detailPills,
+    '.yt-srows--scroll': detailRows, '.yt-panel-foot': detailFoot };
+  right.querySelector.mockImplementation((selector) => (parts as unknown as Record<string, HTMLElement>)[selector] ?? null);
+  Object.defineProperty(right, 'innerHTML', {
+    get: () => Object.entries(parts).map(([selector, part]) => `<div class="${selector.slice(1)}"${part.hidden ? ' hidden' : ''}>${part.innerHTML}</div>`).join(''),
+    set: () => { for (const [selector, part] of Object.entries(parts)) { part.innerHTML = ''; part.hidden = selector !== '.yt-srows--scroll'; } },
+  });
   const grid = element();
   const media = { ...element(), matches: mobile };
   const motion = { ...element(), matches: false };
@@ -84,8 +103,9 @@ async function setup(search = '', countsAvailable = true, storage = new Map<stri
     price: 100,
     available_stations: 3,
   };
-  vi.stubGlobal('document', { querySelector: () => root });
-  vi.stubGlobal('window', { ...element(), matchMedia: (query: string) => query.includes('reduced-motion') ? motion : media });
+  vi.stubGlobal('document', { ...element(), activeElement: null, visibilityState: 'visible', querySelector: () => root });
+  vi.stubGlobal('window', { ...element(), setInterval: vi.fn(), innerWidth: mobile ? 402 : 1200, innerHeight: 844, visualViewport: element(),
+    matchMedia: (query: string) => query.includes('reduced-motion') ? motion : media });
   vi.stubGlobal('alert', vi.fn());
   vi.stubGlobal('CSS', { escape: (s: string) => s });
   vi.stubGlobal('location', { search, pathname: '/query/', hash: '' });
@@ -106,18 +126,19 @@ async function setup(search = '', countsAvailable = true, storage = new Map<stri
     vi.fn(async (url: string) => ({
       ok: true,
       json: async () => {
-        if (url === '/api/products') return { products: [product] };
+        if (url === '/api/products') return { products: productCodes.map((code) => ({ ...product, commodity_code: code })), last_updated: '2026-11-17T10:00:00+08:00' };
+        if (url === '/api/status') return { last_updated: '2026-11-17T10:00:00+08:00', cache_ttl_seconds: 600 };
         if (url === '/api/stations') return { branches: [{ branch_name: '分區', stations }] };
         if (url === '/api/stations/counts') {
           if (!countsAvailable) throw new Error('Counts unavailable');
-          return { counts: { near: { product_count: 2 } } };
+          return { counts: { near: { product_count: 2 } }, last_updated: '2026-11-17T10:00:00+08:00' };
         }
-        if (url === '/api/products/P') return { product, stations: [], total_quantity: 0 };
-        return { stock: [{ ...product, quantity: 3 }] };
+        if (url.startsWith('/api/products/')) return { product: { ...product, commodity_code: url.split('/').pop() }, stations: [], total_quantity: 0, last_updated: '2026-11-17T10:00:00+08:00' };
+        return { stock: [{ ...product, quantity: 3 }], last_updated: '2026-11-17T10:00:00+08:00' };
       },
     })),
   );
-  await initQueryConsole({ persist: Boolean(search) });
+  await initQueryConsole({ persist: Boolean(search), ...options });
   const switchToStations = async () => {
     stationButton.dispatch('click');
     await vi.waitFor(() => expect(right.innerHTML).toContain('生乳捲'));
@@ -142,11 +163,11 @@ async function setup(search = '', countsAvailable = true, storage = new Map<stri
     target: { closest: (selector: string) => selector === '[data-favorite]'
       ? { dataset: { favorite: id, favoriteView: view } } : null },
   });
-  return { root, input, results, right, grid, resize, motion, clickProduct, counts, clickStation, action, switchToStations, locate,
+  return { root, input, results, right, detailHead, detailPills, detailRows, detailFoot, grid, resize, motion, clickProduct, counts, clickStation, action, switchToStations, locate,
     favorite, favoritesFilter, favoritesStatus, favoritesAll, allCount, favoritesCount, locateButton };
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('station master detail', () => {
   it('shows the selected station in the shared result panel, outside the list', async () => {
@@ -206,7 +227,7 @@ describe('station master detail', () => {
     ui.clickStation('near');
     ui.clickStation('far');
     await vi.waitFor(() => expect(ui.right.innerHTML).toContain('生乳捲'));
-    resolve({ ok: true, json: async () => ({ stock: [{ product_name: '舊回應', quantity: 1 }] }) } as Response);
+    resolve({ ok: true, json: async () => ({ last_updated: '2026-11-17T10:00:00+08:00', stock: [{ product_name: '舊回應', quantity: 1 }] }) } as Response);
     await new Promise((r) => setTimeout(r, 0));
     expect(ui.right.innerHTML).toContain('遠站');
     expect(ui.right.innerHTML).not.toContain('舊回應');
@@ -215,7 +236,7 @@ describe('station master detail', () => {
   it('shows unknown counts when summaries fail, and zero after fetching empty stock', async () => {
     const ui = await setup('?view=stations', false);
     expect(ui.results.innerHTML).toContain('款數未知');
-    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ stock: [{ quantity: 0 }] }) } as Response);
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ last_updated: '2026-11-17T10:00:00+08:00', stock: [{ quantity: 0 }] }) } as Response);
     ui.clickStation('near');
     await vi.waitFor(() => expect(ui.right.innerHTML).toContain('此站點目前無庫存'));
     expect(ui.counts.get('near')?.textContent).toBe('0 款');
@@ -338,7 +359,7 @@ describe('favorite placement', () => {
     expect(ui.results.innerHTML).toContain('取消收藏：近站');
     expect(ui.results.innerHTML).not.toContain('aria-expanded=');
     ui.clickStation('near');
-    expect(ui.right.innerHTML).toContain('近站');
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('近站'));
     ui.favorite('near', 'stations');
     expect(ui.right.innerHTML).toContain('近站');
   });
@@ -601,26 +622,98 @@ describe('review regressions', () => {
     let resolve!: (response: Response) => void;
     vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => { resolve = r; }));
     ui.action('[data-pick-product]', { pickProduct: 'P' });
-    expect(ui.right.innerHTML).toContain('載入庫存中');
+    expect(ui.detailRows.innerHTML).toBe('');
     expect(ui.right.innerHTML).not.toContain('近站');
-    resolve({ ok: true, json: async () => ({ product: { commodity_code: 'P', product_name: '生乳捲' }, stations: [] }) } as Response);
+    resolve({ ok: true, json: async () => ({ last_updated: '2026-11-17T10:00:00+08:00', product: { commodity_code: 'P', product_name: '生乳捲' }, stations: [] }) } as Response);
     await vi.waitFor(() => expect(ui.right.innerHTML).toContain('個站點仍有現貨'));
   });
 });
 
 
 describe('query transitions', () => {
-  it('fades the live result and cancels the previous effect on a new selection', async () => {
+  it.each(['products', 'stations'] as const)('reopens cached %s without a loading placeholder', async (view) => {
+    const ui = await setup(view === 'products' ? '?view=products' : '?s=near', true, new Map(), true);
+    const toggle = () => view === 'products' ? ui.clickProduct('P') : ui.clickStation('near');
+    if (view === 'products') {
+      toggle();
+      await vi.waitFor(() => expect(ui.right.innerHTML).toContain('個站點仍有現貨'));
+    }
+    toggle();
+    expect(ui.right.hidden).toBe(true);
+    let html = ui.detailRows.innerHTML;
+    const writes: string[] = [];
+    Object.defineProperty(ui.detailRows, 'innerHTML', {
+      get: () => html,
+      set: (value: string) => { writes.push(value); html = value; },
+    });
+    toggle();
+    await vi.waitFor(() => expect(writes.length).toBeGreaterThan(0));
+    expect(writes.every((value) => !value.includes('載入庫存中'))).toBe(true);
+    expect(ui.right.style.minHeight).toBe('');
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false');
+    expect(ui.right.animate).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])('reserves loading space and releases it on completion (ok=%s)', async (ok) => {
+    const ui = await setup('?s=near', true, new Map(), true);
+    let resolve!: (response: Response) => void;
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => { resolve = r; }));
+    ui.clickStation('far');
+    expect(ui.detailRows.style.minHeight).toBe('120px');
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'true');
+    expect(ui.detailRows.innerHTML).toBe('');
+    resolve({ ok, json: async () => ({ last_updated: '2026-11-17T10:00:00+08:00', stock: [] }) } as Response);
+    await vi.waitFor(() => expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false'));
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false');
+    expect(ui.right.innerHTML).not.toContain('載入庫存中');
+  });
+
+  it.each((['products', 'stations'] as const).flatMap((view) =>
+    (['rotation', 'breakpoint-first', 'resize-first', 'desktop-to-mobile', 'toolbar'] as const).map((change) => [view, change] as const),
+  ))('invalidates loading height only for layout changes in %s (%s)', async (view, change) => {
+    const ui = await setup('?s=near', true, new Map(), change !== 'desktop-to-mobile');
+    let resolve!: (response: Response) => void;
+    vi.mocked(fetch).mockReturnValue(new Promise<Response>((r) => { resolve = r; }));
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else ui.clickStation('far');
+    expect(ui.detailRows.style.minHeight).toBe('120px');
+    // Clearing the reservation must happen before measuring the new layout.
+    ui.right.getBoundingClientRect.mockImplementation(() => ({
+      height: parseFloat(ui.right.style.minHeight) || 120,
+    }));
+    const browserWindow = window as unknown as ReturnType<typeof element>;
+    if (change === 'toolbar') {
+      Object.assign(window, { innerHeight: 730 });
+      (window.visualViewport as unknown as ReturnType<typeof element>).dispatch('resize');
+      browserWindow.dispatch('resize');
+      expect(ui.detailRows.style.minHeight).toBe('120px');
+    } else {
+      Object.assign(window, { innerWidth: change === 'rotation' ? 874 : change === 'desktop-to-mobile' ? 402 : 1200 });
+      if (change === 'breakpoint-first') ui.resize(false);
+      if (change === 'desktop-to-mobile') ui.resize(true);
+      browserWindow.dispatch('resize');
+      if (change === 'resize-first') ui.resize(false);
+      expect(ui.right.style.minHeight).toBe('');
+      expect(ui.detailRows.style.minHeight).toBe('120px');
+    }
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'true');
+    expect(ui.detailRows.innerHTML).toBe('');
+    resolve({ ok: true, json: async () => view === 'products'
+      ? { stations: [], total_quantity: 0, last_updated: '2026-11-17T10:00:00+08:00' }
+      : { stock: [], last_updated: '2026-11-17T10:00:00+08:00' } } as Response);
+    await vi.waitFor(() => expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false'));
+    expect(ui.right.innerHTML).not.toContain('載入庫存中');
+    expect(ui.right.style.minHeight).toBe('');
+  });
+
+  it('updates selections without dimming the result', async () => {
     const ui = await setup('?s=near');
     ui.clickStation('far');
-    await vi.waitFor(() => expect(ui.right.animate).toHaveBeenCalledOnce());
-    const previous = ui.right.animate.mock.results[0].value;
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('遠站'));
     ui.clickStation('near');
-    expect(previous.cancel).toHaveBeenCalledOnce();
     await vi.waitFor(() => expect(ui.right.innerHTML).toContain('近站'));
-    expect(ui.right.animate).toHaveBeenLastCalledWith([
-      { opacity: 0.55 }, { opacity: 1 },
-    ], { duration: 160, easing: 'ease-out' });
+    expect(ui.right.animate).not.toHaveBeenCalled();
+    expect(ui.grid.animate).not.toHaveBeenCalled();
   });
 
   it('updates immediately without opacity effects when reduced motion is enabled', async () => {
@@ -638,11 +731,11 @@ describe('query transitions', () => {
     vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => { resolve = r; }));
     ui.clickStation('far');
     ui.clickStation('near');
-    await vi.waitFor(() => expect(ui.right.animate).toHaveBeenCalledOnce());
-    resolve({ ok: true, json: async () => ({ stock: [] }) } as Response);
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('近站'));
+    resolve({ ok: true, json: async () => ({ last_updated: '2026-11-17T10:00:00+08:00', stock: [] }) } as Response);
     await new Promise((r) => setTimeout(r, 0));
     expect(ui.right.innerHTML).toContain('近站');
-    expect(ui.right.animate).toHaveBeenCalledOnce();
+    expect(ui.right.animate).not.toHaveBeenCalled();
   });
 });
 
@@ -652,6 +745,7 @@ describe('branch stock counts', () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
+        last_updated: '2026-11-17T10:00:00+08:00',
         product: { commodity_code: 'P', product_name: '生乳捲' },
         stations: [
           { station_id: 'near', station_name: '近站', branch_name: '分區', quantity: 5 },
@@ -682,14 +776,13 @@ describe('branch stock counts', () => {
 describe('mobile branch strip', () => {
   it('scrolls the selected branch into the strip without scrolling the page', async () => {
     const ui = await setup('?s=near', true, new Map(), true);
-    const strip = {
-      ...element(),
+    const strip = Object.assign(ui.detailPills, {
       style: { setProperty: vi.fn() },
       scrollLeft: 0,
       scrollWidth: 400,
       clientWidth: 200,
       querySelector: () => ({ offsetLeft: 190, offsetWidth: 70 }),
-    };
+    });
     vi.mocked(ui.right.querySelector).mockReturnValue(strip as unknown as HTMLElement);
     ui.action('[data-pick-product]', { pickProduct: 'P' });
     await vi.waitFor(() => expect(strip.scrollLeft).toBe(125));
@@ -725,6 +818,30 @@ describe('mobile panel height motion', () => {
 
 
 describe('real panel sizing', () => {
+  it('does not animate thousands of pixels and cancels height on viewport changes', async () => {
+    let resized!: () => void;
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { resized = callback; }
+      observe() {}
+    });
+    vi.stubGlobal('getComputedStyle', () => ({
+      paddingTop: '18px', paddingBottom: '18px', borderTopWidth: '1px', borderBottomWidth: '1px',
+    }));
+    const ui = await setup('?s=near', true, new Map(), true);
+    resized();
+    ui.grid.getBoundingClientRect.mockReturnValue({ height: 4000 });
+    resized();
+    expect(ui.root.animate).not.toHaveBeenCalled();
+    expect(ui.root.style.height).toBe('');
+    ui.grid.getBoundingClientRect.mockReturnValue({ height: 3800 });
+    resized();
+    const animation = ui.root.animate.mock.results[0].value;
+    const viewport = window.visualViewport as unknown as ReturnType<typeof element>;
+    viewport.dispatch('resize');
+    expect(animation.cancel).toHaveBeenCalledOnce();
+    expect(ui.root.style.height).toBe('');
+  });
+
   it('animates the live height, retargets an interrupted resize, and clears fixed height for reduced motion', async () => {
     let resized!: () => void;
     vi.stubGlobal('ResizeObserver', class {
@@ -769,11 +886,10 @@ describe('live content motion controls', () => {
     ui.clickStation('near');
     expect(ui.right.animate).not.toHaveBeenCalled();
     ui.clickStation('far');
-    await vi.waitFor(() => expect(ui.right.animate).toHaveBeenCalledOnce());
-    const animation = ui.right.animate.mock.results[0].value;
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('遠站'));
     ui.motion.matches = true;
     ui.motion.dispatch('change');
-    expect(animation.cancel).toHaveBeenCalledOnce();
+    expect(ui.right.animate).not.toHaveBeenCalled();
   });
 });
 
@@ -797,5 +913,601 @@ describe('mobile panel minimum height', () => {
     expect(ui.root.animate).toHaveBeenLastCalledWith([
       { height: '538px' }, { height: '480px' },
     ], expect.objectContaining({ duration: 240 }));
+  });
+});
+
+const UPDATED_VERSION = '2026-11-17T10:10:00+08:00';
+function updatedInventory(version = UPDATED_VERSION) {
+  const product = { commodity_code: 'P', product_name: '新版生乳捲', commodity_name: '原味', price: 100,
+    available_stations: 1, total_quantity: 7, lines: ['新版分區'] };
+  const station = { station_id: 'near', station_name: '新版近站', station_addr: '新版地址',
+    branch_code: 'B', branch_name: '新版分區', lat: 25, lng: 121.5 };
+  return (url: string) => {
+    if (url === '/api/status') return { last_updated: version, station_count: 2, product_count: 1,
+      total_stock_items: 7, cache_ttl_seconds: 600 };
+    if (url === '/api/products') return { products: [product], last_updated: version };
+    if (url === '/api/stations') return { branches: [{ branch_name: '新版分區', stations: [station,
+      { ...station, station_id: 'far', station_name: '新版遠站' }] }] };
+    if (url === '/api/stations/counts') return { counts: { near: { product_count: 7 }, far: { product_count: 7 } }, last_updated: version };
+    if (url.startsWith('/api/products/')) return { product, stations: [{ ...station, quantity: 7 }],
+      total_quantity: 7, last_updated: version };
+    return { stock: [{ ...product, quantity: 7 }], last_updated: version };
+  };
+}
+function response(data: unknown): Response {
+  return { ok: true, json: async () => data } as Response;
+}
+function foreground(): void {
+  (window as unknown as ReturnType<typeof element>).dispatch('focus');
+}
+
+describe('inventory version synchronization', () => {
+  it('polls every five minutes, skips hidden tabs, and does not republish an unchanged version', async () => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    expect(window.setInterval).toHaveBeenCalledWith(expect.any(Function), 300_000);
+    expect(onUpdate).toHaveBeenCalledOnce();
+    const previous = ui.right.innerHTML;
+    const calls = vi.mocked(fetch).mock.calls.length;
+    Object.assign(document, { visibilityState: 'hidden' });
+    foreground();
+    expect(fetch).toHaveBeenCalledTimes(calls);
+    Object.assign(document, { visibilityState: 'visible' });
+    (document as unknown as ReturnType<typeof element>).dispatch('visibilitychange');
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(calls + 2));
+    expect(onUpdate).toHaveBeenCalledOnce();
+    expect(ui.right.innerHTML).toBe(previous);
+  });
+
+  it.each(['products', 'stations'] as const)('commits %s summaries and detail together without a loading placeholder', async (view) => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    if (view === 'products') {
+      ui.action('[data-pick-product]', { pickProduct: 'P' });
+      await vi.waitFor(() => expect(ui.right.innerHTML).toContain('個站點仍有現貨'));
+    }
+    const previous = ui.right.innerHTML;
+    const payload = updatedInventory();
+    let resolve!: (value: Response) => void;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const path = String(url);
+      if (path === (view === 'products' ? '/api/products/P' : '/api/stations/near')) {
+        return new Promise<Response>((r) => { resolve = r; });
+      }
+      return response(payload(path));
+    });
+    foreground();
+    await vi.waitFor(() => expect(resolve).toBeTypeOf('function'));
+    expect(ui.right.innerHTML).toBe(previous);
+    expect(onUpdate).toHaveBeenCalledOnce();
+    let html = ui.detailRows.innerHTML;
+    const writes: string[] = [];
+    Object.defineProperty(ui.detailRows, 'innerHTML', { get: () => html,
+      set: (value: string) => { writes.push(value); html = value; } });
+    resolve(response(payload(view === 'products' ? '/api/products/P' : '/api/stations/near')));
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(ui.right.innerHTML).toContain('新版');
+    expect(ui.results.innerHTML).toContain(view === 'products' ? '新版生乳捲' : '新版近站');
+    expect(writes.every((value) => !value.includes('載入庫存中'))).toBe(true);
+    expect(ui.right.style.minHeight).toBe('');
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false');
+    expect(onUpdate.mock.lastCall?.[0].last_updated).toBe(UPDATED_VERSION);
+  });
+
+  it('invalidates unselected cached details after a version change', async () => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    ui.clickStation('far');
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('遠站'));
+    vi.mocked(fetch).mockImplementation(async (url) => response(updatedInventory()(String(url))));
+    foreground();
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    const calls = vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/stations/near').length;
+    ui.clickStation('near');
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('新版生乳捲'));
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/stations/near')).toHaveLength(calls + 1);
+  });
+
+  it.each(['/api/status', '/api/stations/counts', '/api/stations/near'])('retains the displayed version on %s failure and retries', async (failedPath) => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    const previous = ui.right.innerHTML;
+    const previousList = ui.results.innerHTML;
+    let failed = true;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (String(url) === failedPath && failed) throw new Error('offline');
+      return response(updatedInventory()(String(url)));
+    });
+    foreground();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(ui.right.innerHTML).toBe(previous);
+    expect(ui.results.innerHTML).toBe(previousList);
+    expect(onUpdate).toHaveBeenCalledOnce();
+    failed = false;
+    foreground();
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(ui.right.innerHTML).toContain('新版生乳捲');
+  });
+
+  it('rejects mixed backend versions without publishing a new timestamp', async () => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    const previous = ui.right.innerHTML;
+    vi.mocked(fetch).mockImplementation(async (url) => response(updatedInventory(
+      String(url) === '/api/stations/near' ? '2026-11-17T10:20:00+08:00' : UPDATED_VERSION,
+    )(String(url))));
+    foreground();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(ui.right.innerHTML).toBe(previous);
+    expect(onUpdate).toHaveBeenCalledOnce();
+  });
+
+  it('follows a selection changed while the background detail is pending', async () => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    let resolve!: (value: Response) => void;
+    let held = false;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const path = String(url);
+      if (path === '/api/stations/near' && !held) {
+        held = true;
+        return new Promise<Response>((r) => { resolve = r; });
+      }
+      return response(updatedInventory()(path));
+    });
+    foreground();
+    await vi.waitFor(() => expect(resolve).toBeTypeOf('function'));
+    ui.clickStation('far');
+    resolve(response(updatedInventory()('/api/stations/near')));
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(ui.right.innerHTML).toContain('新版遠站');
+    expect(ui.right.innerHTML).not.toContain('新版近站');
+  });
+
+  it('prevents an old in-flight response from repopulating the refreshed cache', async () => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    let resolve!: (value: Response) => void;
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => { resolve = r; }));
+    ui.clickStation('far');
+    vi.mocked(fetch).mockImplementation(async (url) => response(updatedInventory()(String(url))));
+    foreground();
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    resolve(response({ stock: [], last_updated: '2026-11-17T10:00:00+08:00' }));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(ui.right.innerHTML).toContain('新版生乳捲');
+    ui.clickStation('near');
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('新版近站'));
+    ui.clickStation('far');
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('新版生乳捲'));
+    expect(ui.right.innerHTML).toContain('新版遠站');
+  });
+
+  it('handles products and stations removed by a new empty snapshot', async () => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const path = String(url);
+      const data = path === '/api/products' ? { products: [], last_updated: UPDATED_VERSION }
+        : path === '/api/stations' ? { branches: [] }
+        : path === '/api/stations/counts' ? { counts: {}, last_updated: UPDATED_VERSION }
+        : updatedInventory()(path);
+      return response(data);
+    });
+    foreground();
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(ui.right.innerHTML).toContain('目前沒有可用站點');
+    ui.action('[data-pick-product]', { pickProduct: 'P' });
+    expect(ui.right.innerHTML).toContain('目前沒有可用站點');
+  });
+});
+
+describe('inventory synchronization ordering', () => {
+  it('coalesces simultaneous polls and retries products if backend refresh completes between requests', async () => {
+    const onUpdate = vi.fn();
+    await setup('?s=near', true, new Map(), false, { onUpdate });
+    let resolve!: (value: Response) => void;
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => { resolve = r; }));
+    const calls = vi.mocked(fetch).mock.calls.length;
+    foreground();
+    foreground();
+    expect(fetch).toHaveBeenCalledTimes(calls + 1);
+    vi.mocked(fetch).mockImplementation(async (url) => response(updatedInventory()(String(url))));
+    resolve(response(updatedInventory('2026-11-17T10:00:00+08:00')('/api/products')));
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(onUpdate.mock.lastCall?.[0].last_updated).toBe(UPDATED_VERSION);
+  });
+
+  it('does not regress to an older backend instance version', async () => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    const before = ui.right.innerHTML;
+    vi.mocked(fetch).mockImplementation(async (url) => response(updatedInventory('2026-11-17T09:50:00+08:00')(String(url))));
+    foreground();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(ui.right.innerHTML).toBe(before);
+    expect(onUpdate).toHaveBeenCalledOnce();
+  });
+
+  it('prevents an old product request from overwriting the new version', async () => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    let resolve!: (value: Response) => void;
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => { resolve = r; }));
+    ui.action('[data-pick-product]', { pickProduct: 'P' });
+    vi.mocked(fetch).mockImplementation(async (url) => response(updatedInventory()(String(url))));
+    foreground();
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    resolve(response({ stations: [], total_quantity: 0 }));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(ui.right.innerHTML).toContain('<strong>7</strong>');
+    expect(ui.right.innerHTML).not.toContain('此分區暫無現貨');
+  });
+});
+
+describe('review regressions: detail versions and interaction state', () => {
+  it.each(['products', 'stations'] as const)('rejects old %s details after a version commit and allows a clean retry', async (view) => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    vi.mocked(fetch).mockImplementation(async (url) => response(updatedInventory()(String(url))));
+    foreground();
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    const path = view === 'products' ? '/api/products/P' : '/api/stations/far';
+    let old = true;
+    let detailRequests = 0;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (String(url) === path) {
+        detailRequests++;
+        return response(updatedInventory(old ? '2026-11-17T10:00:00+08:00' : UPDATED_VERSION)(path));
+      }
+      return response(updatedInventory()(String(url)));
+    });
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else ui.clickStation('far');
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('無法載入'));
+    expect(detailRequests).toBeLessThanOrEqual(3);
+    expect(ui.right.style.minHeight).toBe('');
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false');
+    old = false;
+    const before = detailRequests;
+    ui.action('[data-retry]');
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain(view === 'products' ? '<strong>7</strong>' : '新版生乳捲'));
+    expect(detailRequests).toBe(before + 1);
+  });
+
+  it.each(['products', 'stations'] as const)('reconciles a newer %s detail with summaries before displaying it', async (view) => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    vi.mocked(fetch).mockImplementation(async (url) => response(updatedInventory()(String(url))));
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else ui.clickStation('far');
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(ui.results.innerHTML).toContain(view === 'products' ? '新版生乳捲' : '新版遠站');
+    expect(ui.right.innerHTML).toContain(view === 'products' ? '<strong>7</strong>' : '新版生乳捲');
+    expect(onUpdate.mock.lastCall?.[0].last_updated).toBe(UPDATED_VERSION);
+  });
+
+  it.each(['products', 'stations'] as const)('recovers from one mismatched %s response without caching it', async (view) => {
+    const ui = await setup('?s=near');
+    const path = view === 'products' ? '/api/products/P' : '/api/stations/far';
+    let first = true;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const version = String(url) === path && first ? '2026-11-17T09:50:00+08:00' : '2026-11-17T10:00:00+08:00';
+      if (String(url) === path) first = false;
+      return response(updatedInventory(version)(String(url)));
+    });
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else ui.clickStation('far');
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain(view === 'products' ? '<strong>7</strong>' : '新版生乳捲'));
+    const requests = vi.mocked(fetch).mock.calls.filter(([url]) => url === path).length;
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else { ui.clickStation('near'); ui.clickStation('far'); }
+    await new Promise((r) => setTimeout(r, 0));
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => url === path)).toHaveLength(requests);
+  });
+
+  it.each(['products', 'stations'] as const)('does not accept a %s response without last_updated', async (view) => {
+    const ui = await setup('?s=near');
+    const path = view === 'products' ? '/api/products/P' : '/api/stations/far';
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const data = updatedInventory('2026-11-17T10:00:00+08:00')(String(url));
+      if (String(url) === path) return response({ ...data, last_updated: undefined });
+      return response(data);
+    });
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else ui.clickStation('far');
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('無法載入'));
+  });
+
+  it.each([true, false])('restores the detail product button or falls back when removed (exists=%s)', async (exists) => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    Object.assign(document, { activeElement: { dataset: { pickProduct: 'P' } } });
+    const nextButton = element();
+    const original = ui.root.querySelector;
+    vi.spyOn(ui.root, 'querySelector').mockImplementation((selector) => selector === '[data-pick-product="P"]'
+      ? exists ? nextButton : null : original(selector));
+    vi.mocked(fetch).mockImplementation(async (url) => response(updatedInventory()(String(url))));
+    foreground();
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(exists ? nextButton.focus : ui.input.focus).toHaveBeenCalledWith({ preventScroll: true });
+  });
+
+  it('does not steal focus from a homepage product card outside the console', async () => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    Object.assign(document, { activeElement: { dataset: { code: 'P' } } });
+    ui.root.contains.mockReturnValue(false);
+    const queryButton = element();
+    const original = ui.root.querySelector;
+    vi.spyOn(ui.root, 'querySelector').mockImplementation((selector) => selector === '[data-code="P"]' ? queryButton : original(selector));
+    vi.mocked(fetch).mockImplementation(async (url) => response(updatedInventory()(String(url))));
+    foreground();
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(ui.input.focus).not.toHaveBeenCalled();
+    expect(queryButton.focus).not.toHaveBeenCalled();
+  });
+
+  it.each([1000, 600])('preserves and clamps the same detail scroll position (scrollHeight=%s)', async (scrollHeight) => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    const previousList = { scrollTop: 500, children: [], getBoundingClientRect: () => ({ top: 0, bottom: 400 }) };
+    const nextList = { children: [], getBoundingClientRect: () => ({ top: 0, bottom: 400 }), scrollTop: 0, scrollHeight, clientHeight: 400 };
+    let reads = 0;
+    ui.right.querySelector.mockImplementation((selector) => selector === '.yt-srows--scroll'
+      ? (++reads === 1 ? previousList : nextList) as unknown as HTMLElement : null);
+    vi.mocked(fetch).mockImplementation(async (url) => response(updatedInventory()(String(url))));
+    foreground();
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(nextList.scrollTop).toBe(Math.min(500, scrollHeight - 400));
+  });
+
+  it('does not carry scroll position to a replacement selection', async () => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    const nextList = { children: [], getBoundingClientRect: () => ({ top: 0, bottom: 400 }), scrollTop: 0, scrollHeight: 1000, clientHeight: 400 };
+    ui.right.querySelector.mockImplementation((selector) => selector === '.yt-srows--scroll' ? nextList as unknown as HTMLElement : null);
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const data = updatedInventory()(String(url));
+      if (String(url) === '/api/stations') return response({ branches: [{ branch_name: '新版分區', stations: [
+        { station_id: 'far', station_name: '新版遠站', station_addr: '', branch_name: '新版分區' },
+      ] }] });
+      return response(data);
+    });
+    foreground();
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(nextList.scrollTop).toBe(0);
+  });
+});
+
+describe('joined synchronization regressions', () => {
+  it.each(['products', 'stations'] as const)('waits for the ongoing pass and selected %s continuation before using a retry', async (view) => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    let releaseOriginal!: (value: Response) => void;
+    let releaseSelected!: (value: Response) => void;
+    let heldOriginal = false;
+    let selectedCalls = 0;
+    const selectedPath = view === 'products' ? '/api/products/P' : '/api/stations/far';
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const path = String(url);
+      if (path === '/api/stations/near' && !heldOriginal) {
+        heldOriginal = true;
+        return new Promise<Response>((r) => { releaseOriginal = r; });
+      }
+      if (path === selectedPath && ++selectedCalls === 2) {
+        return new Promise<Response>((r) => { releaseSelected = r; });
+      }
+      return response(updatedInventory()(path));
+    });
+    foreground();
+    await vi.waitFor(() => expect(releaseOriginal).toBeTypeOf('function'));
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else ui.clickStation('far');
+    await vi.waitFor(() => expect(selectedCalls).toBe(1));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(ui.detailRows.innerHTML).toBe('');
+    expect(ui.right.innerHTML).not.toContain('無法載入');
+    releaseOriginal(response(updatedInventory()('/api/stations/near')));
+    await vi.waitFor(() => expect(releaseSelected).toBeTypeOf('function'));
+    expect(onUpdate).toHaveBeenCalledOnce();
+    expect(ui.right.innerHTML).not.toContain('無法載入');
+    releaseSelected(response(updatedInventory()(selectedPath)));
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(ui.right.innerHTML).toContain(view === 'products' ? '<strong>7</strong>' : '新版遠站');
+    expect(selectedCalls).toBe(2);
+  });
+
+  it('waits through multiple selection continuations and only commits the final selection', async () => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    let releaseNear!: (value: Response) => void;
+    let releaseFar!: (value: Response) => void;
+    let nearCalls = 0;
+    let farCalls = 0;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const path = String(url);
+      if (path === '/api/stations/near' && ++nearCalls === 1) return new Promise<Response>((r) => { releaseNear = r; });
+      if (path === '/api/stations/far' && ++farCalls === 2) return new Promise<Response>((r) => { releaseFar = r; });
+      return response(updatedInventory()(path));
+    });
+    foreground();
+    await vi.waitFor(() => expect(releaseNear).toBeTypeOf('function'));
+    ui.clickStation('far');
+    await vi.waitFor(() => expect(farCalls).toBe(1));
+    releaseNear(response(updatedInventory()('/api/stations/near')));
+    await vi.waitFor(() => expect(releaseFar).toBeTypeOf('function'));
+    ui.action('[data-pick-product]', { pickProduct: 'P' });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(ui.right.innerHTML).not.toContain('無法載入');
+    expect(onUpdate).toHaveBeenCalledOnce();
+    releaseFar(response(updatedInventory()('/api/stations/far')));
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(ui.right.innerHTML).toContain('<strong>7</strong>');
+    expect(ui.right.innerHTML).not.toContain('無法載入');
+  });
+
+  it('releases a failed shared synchronization and permits an explicit retry without an automatic loop', async () => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    let fail = true;
+    let detailCalls = 0;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const path = String(url);
+      if (path === '/api/stations/counts' && fail) throw new Error('offline');
+      if (path === '/api/stations/far') detailCalls++;
+      return response(updatedInventory()(path));
+    });
+    ui.clickStation('far');
+    await vi.waitFor(() => expect(ui.right.innerHTML).toContain('無法載入'));
+    const settled = detailCalls;
+    await new Promise((r) => setTimeout(r, 0));
+    expect(detailCalls).toBe(settled);
+    expect(detailCalls).toBe(2);
+    fail = false;
+    ui.action('[data-retry]');
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    expect(ui.right.innerHTML).toContain('新版遠站');
+  });
+});
+
+describe('loading feedback does not flash for fast requests', () => {
+  it.each(['products', 'stations'] as const)('never inserts a loading message for a fast uncached %s response', async (view) => {
+    const ui = await setup('?s=near');
+    vi.useFakeTimers();
+    let resolve!: (value: Response) => void;
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => { resolve = r; }));
+    let html = ui.detailRows.innerHTML;
+    const writes: string[] = [];
+    Object.defineProperty(ui.detailRows, 'innerHTML', { get: () => html,
+      set: (value: string) => { writes.push(value); html = value; } });
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else ui.clickStation('far');
+    await vi.advanceTimersByTimeAsync(100);
+    expect(ui.detailRows.innerHTML).toBe('');
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'true');
+    resolve(response(updatedInventory('2026-11-17T10:00:00+08:00')(view === 'products' ? '/api/products/P' : '/api/stations/far')));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ui.right.innerHTML).toContain(view === 'products' ? '<strong>7</strong>' : '新版生乳捲');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(writes.some((value) => value.includes('載入庫存中'))).toBe(false);
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false');
+  });
+
+  it.each((['products', 'stations'] as const).flatMap((view) =>
+    [true, false].map((ok) => [view, ok] as const),
+  ))('shows delayed feedback for slow %s and clears it on completion (ok=%s)', async (view, ok) => {
+    const ui = await setup('?s=near');
+    vi.useFakeTimers();
+    let resolve!: (value: Response) => void;
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => { resolve = r; }));
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else ui.clickStation('far');
+    await vi.advanceTimersByTimeAsync(199);
+    expect(ui.right.innerHTML).not.toContain('載入庫存中');
+    await vi.advanceTimersByTimeAsync(1);
+    expect(ui.right.innerHTML).toContain('載入庫存中');
+    resolve(ok ? response(updatedInventory('2026-11-17T10:00:00+08:00')(view === 'products' ? '/api/products/P' : '/api/stations/far'))
+      : { ok: false } as Response);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ui.right.innerHTML).not.toContain('載入庫存中');
+    expect(ui.right.innerHTML).toContain(ok ? view === 'products' ? '<strong>7</strong>' : '新版生乳捲' : '無法載入');
+    expect(ui.right.style.minHeight).toBe('');
+    expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false');
+  });
+
+  it.each(['products', 'stations'] as const)('does not let a pending %s timer replace the latest selection', async (view) => {
+    const ui = await setup('?s=near');
+    vi.useFakeTimers();
+    let resolve!: (value: Response) => void;
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => { resolve = r; }));
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else ui.clickStation('far');
+    await vi.advanceTimersByTimeAsync(100);
+    if (view === 'products') ui.switchToStations();
+    else ui.clickStation('near');
+    await vi.advanceTimersByTimeAsync(500);
+    expect(ui.right.innerHTML).toContain('近站');
+    expect(ui.right.innerHTML).not.toContain('載入庫存中');
+    resolve(response(updatedInventory('2026-11-17T10:00:00+08:00')(view === 'products' ? '/api/products/P' : '/api/stations/far')));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ui.right.innerHTML).toContain('近站');
+    expect(ui.right.innerHTML).not.toContain('載入庫存中');
+  });
+});
+
+describe('reading anchor during background reconciliation', () => {
+  it.each([true, false])('keeps the visible row position when rows above it reorder (internal=%s)', async (internal) => {
+    const onUpdate = vi.fn();
+    const ui = await setup('?s=near', true, new Map(), false, { onUpdate });
+    const row = { hasAttribute: () => true,
+      getBoundingClientRect: vi.fn().mockReturnValueOnce({ top: 100, bottom: 150 })
+        .mockReturnValueOnce({ top: 100, bottom: 150 }).mockReturnValue({ top: 300, bottom: 350 }) };
+    const previousList = { children: [row], scrollTop: internal ? 300 : 0,
+      scrollHeight: internal ? 2000 : 400, clientHeight: 400,
+      getBoundingClientRect: () => ({ top: internal ? 0 : -200, bottom: 400 }) };
+    const nextList = { scrollTop: internal ? 300 : 0, scrollHeight: 2000, clientHeight: 400,
+      contains: () => true, getBoundingClientRect: () => ({ top: 0, bottom: 400 }) };
+    let reads = 0;
+    ui.right.querySelector.mockImplementation((selector) => selector === '.yt-srows--scroll'
+      ? (++reads === 1 ? previousList : nextList) as unknown as HTMLElement : null);
+    Object.assign(window, { scrollY: 900, scrollTo: vi.fn() });
+    vi.mocked(fetch).mockImplementation(async (url) => response(updatedInventory()(String(url))));
+    foreground();
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    if (internal) expect(nextList.scrollTop).toBe(500);
+    else expect(window.scrollTo).toHaveBeenCalledWith({ top: 1100, behavior: 'auto' });
+  });
+});
+
+describe('persistent panel selection and pending feedback', () => {
+  it('resets scrolling when switching between cached products without another detail request', async () => {
+    const ui = await setup('?p=P', true, new Map(), false, {}, ['P', 'Q']);
+    ui.clickProduct('Q');
+    await vi.waitFor(() => expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false'));
+    ui.clickProduct('P');
+    await vi.waitFor(() => expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false'));
+    ui.detailRows.scrollTop = 300;
+    const requests = vi.mocked(fetch).mock.calls.length;
+    ui.clickProduct('Q');
+    await vi.waitFor(() => expect(ui.right.setAttribute).toHaveBeenLastCalledWith('aria-busy', 'false'));
+    expect(ui.detailRows.scrollTop).toBe(0);
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
+  });
+
+  it.each(['products', 'stations'] as const)('retains visible pending %s feedback across breakpoints', async (view) => {
+    const ui = await setup('?s=near');
+    vi.useFakeTimers();
+    vi.mocked(fetch).mockReturnValue(new Promise<Response>(() => {}));
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else ui.clickStation('far');
+    await vi.advanceTimersByTimeAsync(200);
+    const feedback = ui.detailRows.innerHTML;
+    expect(feedback).toContain('載入庫存中');
+    let html = feedback;
+    const writes: string[] = [];
+    Object.defineProperty(ui.detailRows, 'innerHTML', { get: () => html,
+      set: (value: string) => { writes.push(value); html = value; } });
+    ui.resize(true);
+    expect(ui.detailRows.innerHTML).toBe(feedback);
+    await vi.advanceTimersByTimeAsync(50);
+    ui.resize(false);
+    expect(ui.detailRows.innerHTML).toBe(feedback);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(writes.every((value) => value === feedback)).toBe(true);
+  });
+
+  it.each(['products', 'stations'] as const)('keeps the original %s feedback deadline before a breakpoint', async (view) => {
+    const ui = await setup('?s=near');
+    vi.useFakeTimers();
+    vi.mocked(fetch).mockReturnValue(new Promise<Response>(() => {}));
+    if (view === 'products') ui.action('[data-pick-product]', { pickProduct: 'P' });
+    else ui.clickStation('far');
+    await vi.advanceTimersByTimeAsync(150);
+    ui.resize(true);
+    await vi.advanceTimersByTimeAsync(49);
+    expect(ui.detailRows.innerHTML).not.toContain('載入庫存中');
+    await vi.advanceTimersByTimeAsync(1);
+    expect(ui.detailRows.innerHTML).toContain('載入庫存中');
   });
 });

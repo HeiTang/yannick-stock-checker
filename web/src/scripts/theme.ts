@@ -169,6 +169,9 @@ export function applyDirection(
   el.style.setProperty('--tint', dir.brand);
   el.style.setProperty('--tint-pressed', dir.brand2);
   el.style.setProperty('--glow-color', dir.brand);
+  document.documentElement.style.setProperty('--yt-root-bg', vars['--yt-surface']);
+  document.documentElement.style.colorScheme = mode;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', vars['--yt-surface']);
 
   return { dir, mode };
 }

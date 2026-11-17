@@ -418,6 +418,10 @@
   max-width: 42ch;
   margin: 0;
 }
+.yt-source-link {
+  color: var(--yt-ink);
+  text-decoration: underline;
+}
 
 /* ---------- Product wall ---------- */
 .yt-wall-grid {
