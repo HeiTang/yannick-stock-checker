@@ -2,6 +2,7 @@
 import '../styles/query.css';
 import GoogleAnalytics from '../components/GoogleAnalytics.astro';
 import AssetRecovery from '../components/AssetRecovery.astro';
+import ThemeBootstrap from '../components/ThemeBootstrap.astro';
 
 const title = '快速查庫存 · 亞尼克・庫存雷達';
 const description =
@@ -14,16 +15,16 @@ const ogImage = new URL('/og-image.jpg', Astro.site).href;
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <ThemeBootstrap />
     <AssetRecovery />
     <GoogleAnalytics />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <meta name="robots" content="noindex,follow" />
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png" />
     <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
-    <meta name="theme-color" content="#120A11" />
 
     <!-- Open Graph (Facebook / LINE / Discord / etc.) -->
     <meta property="og:type" content="website" />
@@ -83,7 +84,8 @@ const ogImage = new URL('/og-image.jpg', Astro.site).href;
         </main>
 
         <footer class="yt-lean-foot">
-          <span>非官方工具，與亞尼克無官方關聯；資料為展示用途。</span>
+          <span>非官方工具<span class="yt-foot-extra">，與亞尼克無官方關聯；資料為展示用途。</span></span>
+          <span class="yt-foot-separator" aria-hidden="true">·</span>
           <span class="yt-updated">資料更新 <span id="updated-at">--:--</span></span>
         </footer>
       </div>

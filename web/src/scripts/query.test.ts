@@ -436,21 +436,24 @@ describe('mobile accordion', () => {
 });
 
 
-describe('location icon states', () => {
-  it('shows a busy spinner, then the active icon, and can turn location off', async () => {
+describe('location control states', () => {
+  it('keeps the label while showing the idle, busy, and active icons', async () => {
     const ui = await setup('?view=stations');
     let success!: PositionCallback;
     vi.spyOn(navigator.geolocation, 'getCurrentPosition').mockImplementation((callback) => { success = callback; });
     const idleIcon = ui.locateButton.innerHTML;
+    expect(idleIcon).toContain('找附近');
     expect(ui.locateButton.title).toBe('定位並依距離排序');
     ui.action('[data-locate]');
     expect(ui.locateButton.disabled).toBe(true);
     expect(ui.locateButton.innerHTML).toContain('yt-location-spinner');
+    expect(ui.locateButton.innerHTML).toContain('找附近');
     expect(ui.locateButton.setAttribute).toHaveBeenCalledWith('aria-busy', 'true');
     success({ coords: { latitude: 25, longitude: 121.5 } } as GeolocationPosition);
     expect(ui.locateButton.disabled).toBe(false);
     expect(ui.locateButton.innerHTML).not.toContain('yt-location-spinner');
     expect(ui.locateButton.innerHTML).not.toBe(idleIcon);
+    expect(ui.locateButton.innerHTML).toContain('找附近');
     expect(ui.locateButton.setAttribute).toHaveBeenCalledWith('aria-pressed', 'true');
     ui.action('[data-locate]');
     expect(ui.locateButton.innerHTML).toBe(idleIcon);
