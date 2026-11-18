@@ -1,6 +1,7 @@
 ---
 import '../styles/query.css';
 import GoogleAnalytics from '../components/GoogleAnalytics.astro';
+import AssetRecovery from '../components/AssetRecovery.astro';
 import ThemeBootstrap from '../components/ThemeBootstrap.astro';
 
 const title = '快速查庫存 · 亞尼克・庫存雷達';
@@ -14,8 +15,9 @@ const ogImage = new URL('/og-image.jpg', Astro.site).href;
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <ThemeBootstrap />
+    <AssetRecovery />
     <GoogleAnalytics />
     <title>{title}</title>
     <meta name="description" content={description} />
@@ -90,7 +92,6 @@ const ogImage = new URL('/og-image.jpg', Astro.site).href;
     </div>
 
     <script>
-      import { STATUS_REFRESH_INTERVAL_MS } from '../config.ts';
       import { initQueryConsole } from '../scripts/query.ts';
       import { initThemeMenu } from '../scripts/themeMenu.ts';
       import { formatTimestamp } from '../scripts/utils.ts';
@@ -107,21 +108,13 @@ const ogImage = new URL('/og-image.jpg', Astro.site).href;
 
       const updatedAt = document.getElementById('updated-at');
 
-      async function syncUpdatedAt() {
-        try {
-          const res = await fetch('/api/status');
-          if (!res.ok) return;
-          const data = await res.json();
-          if (updatedAt) updatedAt.textContent = formatTimestamp(data.last_updated ?? null);
-        } catch {
-          /* ignore */
-        }
-      }
-
       document.addEventListener('DOMContentLoaded', () => {
-        initQueryConsole({ rootSelector: '#query-console', persist: true, lean: true });
-        syncUpdatedAt();
-        setInterval(syncUpdatedAt, STATUS_REFRESH_INTERVAL_MS);
+        void initQueryConsole({
+          rootSelector: '#query-console', persist: true, lean: true,
+          onUpdate: (status) => {
+            if (updatedAt) updatedAt.textContent = formatTimestamp(status.last_updated);
+          },
+        });
       });
     </script>
   </body>

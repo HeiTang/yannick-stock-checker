@@ -7,7 +7,8 @@ import { accentFor, flavorOf, type ProductSummary } from './products.ts';
 import { icon, type IconName } from './icon.ts';
 import { escapeHtml } from './utils.ts';
 import { track } from './analytics.ts';
-import { GEOLOCATION_OPTIONS } from '../config.ts';
+import { patchQueryPart } from './queryPanel.ts';
+import { GEOLOCATION_OPTIONS, STATUS_REFRESH_INTERVAL_MS } from '../config.ts';
 import { FAVORITES_KEY, parseFavorites, type Favorite } from './favorites.ts';
 
 interface StationInfo {
@@ -27,6 +28,7 @@ interface ProductDetail {
   };
   stations: StationInfo[];
   total_quantity: number;
+  last_updated?: string | null;
 }
 
 interface StationSummary {
@@ -97,7 +99,16 @@ function formatDistance(km: number | null | undefined): string {
   return `${km.toFixed(1)} km`;
 }
 
+export interface InventoryStatus {
+  last_updated: string | null;
+  station_count: number;
+  product_count: number;
+  total_stock_items: number;
+  cache_ttl_seconds: number;
+}
+
 export interface InitOptions {
+  onUpdate?: (status: InventoryStatus, products: ProductSummary[]) => void;
   rootSelector?: string;
   persist?: boolean;
   lean?: boolean;
@@ -123,6 +134,9 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   let products: ProductSummary[] = [];
   let branches: BranchGroup[] = [];
   let allStations: (StationSummary & { distanceKm?: number })[] = [];
+  let dataVersion: string | null = null;
+  let dataGeneration = 0;
+  let detailRenderRevision = 0;
   const productDetailCache = new Map<string, ProductDetail>();
   const stationDetailCache = new Map<string, StationProductRow[]>();
 
@@ -145,6 +159,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     }
     const pData = await pRes.json();
     const sData = await sRes.json();
+    dataVersion = pData.last_updated ?? null;
     products = (pData.products ?? []) as ProductSummary[];
     branches = (sData.branches ?? []) as BranchGroup[];
     allStations = branches.flatMap((b) =>
@@ -158,27 +173,24 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   // Now resolve the best-effort counts; a null payload here is silently ignored.
   const cData = (await countsPromise) as {
     counts: Record<string, { product_count: number; total_quantity: number }>;
+    last_updated?: string | null;
   } | null;
   if (cData?.counts) {
+    if (cData.last_updated !== dataVersion) dataVersion = null;
     stationCounts = Object.fromEntries(
       Object.entries(cData.counts).map(([tid, info]) => [tid, info.product_count]),
     );
   }
 
-  if (products.length === 0 || allStations.length === 0) {
-    root.innerHTML = emptyState('目前沒有可用資料', '稍後再來看看商品與站點庫存。', 'cards');
-    return { pickProduct() {} };
-  }
-
-  const allBranchNames = Array.from(new Set(allStations.map((s) => s.branch_name)));
-  const stationById = new Map(allStations.map((s) => [s.station_id, s]));
+  let allBranchNames = Array.from(new Set(allStations.map((s) => s.branch_name)));
+  let stationById = new Map(allStations.map((s) => [s.station_id, s]));
 
   // ---- Initial state (URL + localStorage memory) ----
   const initial: QueryState = {
     view: 'products',
     keyword: '',
-    pickedProduct: products[0].commodity_code,
-    pickedStation: allStations[0].station_id,
+    pickedProduct: products[0]?.commodity_code ?? '',
+    pickedStation: allStations[0]?.station_id ?? '',
     located: false,
     branch: 'all',
   };
@@ -236,9 +248,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   const mobileLayout = window.matchMedia('(max-width: 940px)');
   let mobileExpanded = hasDeepLink;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let contentAnimation: Animation | undefined;
   let renderedView = state.view;
-  let renderRevision = 0;
 
   // ---- DOM ----
   let consoleEl: HTMLElement = root;
@@ -305,6 +315,17 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   const $resultList = consoleEl.querySelector<HTMLElement>('.yt-result-list')!;
   const $grid = consoleEl.querySelector<HTMLElement>('.yt-console-grid')!;
   const $right = consoleEl.querySelector<HTMLElement>('.yt-console-right')!;
+  $right.innerHTML = `<div class="yt-panel-head" hidden></div>
+    <div class="yt-bpills" hidden></div>
+    <div class="yt-srows yt-srows--scroll"></div>
+    <div class="yt-panel-foot" hidden></div>`;
+  const $detailHead = $right.querySelector<HTMLElement>('.yt-panel-head')!;
+  const $detailPills = $right.querySelector<HTMLElement>('.yt-bpills')!;
+  const $detailRows = $right.querySelector<HTMLElement>('.yt-srows--scroll')!;
+  const $detailFoot = $right.querySelector<HTMLElement>('.yt-panel-foot')!;
+  let displayedDetailKey = '';
+  let detailLoadingStartedAt: number | undefined;
+  $detailPills.addEventListener('scroll', () => updateBranchFades($detailPills), { passive: true });
   const $favoritesFilter = consoleEl.querySelector<HTMLButtonElement>('[data-favorites-filter]')!;
   const $favoritesAll = consoleEl.querySelector<HTMLButtonElement>('[data-favorites-all]')!;
   const $allCount = consoleEl.querySelector<HTMLElement>('[data-all-count]')!;
@@ -343,7 +364,8 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         previousHeight = nextHeight;
         return;
       }
-      if (fromHeight === undefined || Math.abs(nextHeight - fromHeight) < 1) {
+      if (fromHeight === undefined || Math.abs(nextHeight - fromHeight) < 1 ||
+          Math.abs(nextHeight - fromHeight) > window.innerHeight) {
         heightAnimation?.cancel();
         heightAnimation = undefined;
         consoleEl.style.height = '';
@@ -368,6 +390,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     observer.observe($grid);
     mobileLayout.addEventListener('change', resetHeight);
     reducedMotion.addEventListener('change', resetHeight);
+    window.visualViewport?.addEventListener('resize', resetHeight);
   }
 
   // ---- Helpers ----
@@ -399,31 +422,41 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     history.replaceState(null, '', location.pathname + '?' + u.toString() + location.hash);
   };
 
+  async function readCurrentDetail<T extends { last_updated?: string | null }>(url: string): Promise<T | null> {
+    try {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const generation = dataGeneration;
+        const data = await readUpdate<T>(url);
+        if (generation !== dataGeneration) return null;
+        if (dataVersion && data.last_updated === dataVersion) return data;
+        if (attempt === 0) {
+          await checkForUpdates(true);
+          if (generation !== dataGeneration) return null;
+        }
+      }
+    } catch {
+      // A failed or mismatched response must not enter the current cache.
+    }
+    return null;
+  }
+
   async function loadProductDetail(code: string): Promise<ProductDetail | null> {
     if (productDetailCache.has(code)) return productDetailCache.get(code)!;
-    try {
-      const res = await fetch(`/api/products/${encodeURIComponent(code)}`);
-      if (!res.ok) return null;
-      const data = (await res.json()) as ProductDetail;
-      productDetailCache.set(code, data);
-      return data;
-    } catch {
-      return null;
-    }
+    const data = await readCurrentDetail<ProductDetail>(`/api/products/${encodeURIComponent(code)}`);
+    if (productDetailCache.has(code)) return productDetailCache.get(code)!;
+    if (!data || data.last_updated !== dataVersion) return null;
+    productDetailCache.set(code, data);
+    return data;
   }
 
   async function loadStationDetail(tid: string): Promise<StationProductRow[] | null> {
     if (stationDetailCache.has(tid)) return stationDetailCache.get(tid)!;
-    try {
-      const res = await fetch(`/api/stations/${encodeURIComponent(tid)}`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      const rows = (data.stock ?? data.products ?? []) as StationProductRow[];
-      stationDetailCache.set(tid, rows);
-      return rows;
-    } catch {
-      return null;
-    }
+    const data = await readCurrentDetail<{ stock?: StationProductRow[]; products?: StationProductRow[]; last_updated?: string | null }>(`/api/stations/${encodeURIComponent(tid)}`);
+    if (stationDetailCache.has(tid)) return stationDetailCache.get(tid)!;
+    if (!data || data.last_updated !== dataVersion) return null;
+    const rows = data.stock ?? data.products ?? [];
+    stationDetailCache.set(tid, rows);
+    return rows;
   }
 
   function isFavorite(view: ViewMode, id: string): boolean {
@@ -542,6 +575,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
 
   function placeDetails(): boolean {
     if (!mobileLayout.matches) {
+      if ($right.parentElement !== $grid) $grid.append($right);
       $right.hidden = false;
       return true;
     }
@@ -550,7 +584,8 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       : `[data-tid="${CSS.escape(state.pickedStation)}"]`;
     const selected = $resultList.querySelector<HTMLButtonElement>(selector);
     $right.hidden = !mobileExpanded || !selected;
-    if (!$right.hidden) selected?.closest('.yt-query-item')?.append($right);
+    const parent = $right.hidden ? $grid : selected?.closest('.yt-query-item');
+    if (parent && $right.parentElement !== parent) parent.append($right);
     return !$right.hidden;
   }
 
@@ -575,7 +610,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
               <span class="yt-result-flavor">${escapeHtml(flavorOf(p.product_name))}</span>
             </span>
             <span class="yt-result-count">${p.available_stations} 站</span>
-            <span class="yt-choice-caret" aria-hidden="true">${icon('caret-down', { size: 14 })}</span>
+            <span class="yt-choice-caret" aria-hidden="true"></span>
           </div>
           </div>`;
         })
@@ -616,7 +651,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
               ${distance ? `<span class="yt-result-count">${distance}</span>` : ''}
               <span class="yt-result-count" data-count="${escapeHtml(s.station_id)}">${countLabel}</span>
             </span>
-            <span class="yt-choice-caret" aria-hidden="true">${icon('caret-down', { size: 14 })}</span>
+            <span class="yt-choice-caret" aria-hidden="true"></span>
           </div>
           </div>`;
         })
@@ -643,17 +678,75 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     updateBranchFades(pills);
   }
 
-  async function renderRightProduct() {
+  function setDetailBusy(busy: boolean): void {
+    if (!busy) detailLoadingStartedAt = undefined;
+    $right.setAttribute('aria-busy', String(busy));
+    $detailRows.style.minHeight = busy ? '120px' : '';
+  }
+
+  function setDetailHeading(title: string, subtitle: string): void {
+    patchQueryPart($detailHead, `<div style="min-width:0"><div class="yt-panel-title">${escapeHtml(title)}</div><div class="yt-panel-sub">${escapeHtml(subtitle)}</div></div>`);
+    $detailHead.hidden = false;
+  }
+
+  function prepareDetail(key: string, title: string, subtitle: string | undefined, loading: boolean): void {
+    const changed = displayedDetailKey !== key;
+    setDetailHeading(title, subtitle ?? (changed ? '' : $detailHead.querySelector('.yt-panel-sub')?.textContent ?? ''));
+    if (changed) {
+      displayedDetailKey = key;
+      $detailRows.scrollTop = 0;
+      patchQueryPart($detailPills, '');
+      patchQueryPart($detailFoot, '');
+      $detailPills.hidden = true;
+      $detailFoot.hidden = true;
+    }
+    if (loading && (changed || detailLoadingStartedAt === undefined)) {
+      detailLoadingStartedAt = Date.now();
+      patchQueryPart($detailRows, '');
+    }
+    setDetailBusy(loading);
+  }
+
+  function showDetailMessage(html: string, hideHeading = false): void {
+    patchQueryPart($detailRows, html);
+    if (hideHeading) {
+      $detailHead.hidden = true;
+      $detailPills.hidden = true;
+      $detailFoot.hidden = true;
+      displayedDetailKey = '';
+    }
+  }
+
+  async function waitForDetail<T>(request: Promise<T>, loading: boolean, placeholder: string, revision: number): Promise<T> {
+    const timer = loading ? setTimeout(() => {
+      if (revision === detailRenderRevision && !$right.hidden) showDetailMessage(placeholder);
+    }, Math.max(0, 200 - (Date.now() - (detailLoadingStartedAt ?? Date.now())))) : undefined;
+    try {
+      return await request;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function renderRightProduct(revision: number) {
     const product = products.find((p) => p.commodity_code === state.pickedProduct) ?? products[0];
+    if (!product) {
+      setDetailBusy(false);
+      showDetailMessage(emptyState('目前沒有可用商品', '稍後再來看看商品庫存。', 'cards'), true);
+      return;
+    }
     const expectedView = state.view;
     const expectedCode = product.commodity_code;
-    $right.innerHTML = emptyState('載入庫存中…', '正在取得目前庫存，請稍候。', 'cards');
-    const detail = await loadProductDetail(product.commodity_code);
+    const loading = !productDetailCache.has(product.commodity_code);
+    prepareDetail(`product:${product.commodity_code}`, product.product_name, undefined, loading);
+    const detail = await waitForDetail(loadProductDetail(product.commodity_code), loading,
+      emptyState('載入庫存中…', '正在取得目前庫存，請稍候。', 'cards'), revision);
     // Guard against stale render: user may have switched view/product
     // between dispatch and await resolution.
-    if (state.view !== expectedView || state.pickedProduct !== expectedCode) return;
+    if (revision !== detailRenderRevision || state.view !== expectedView || state.pickedProduct !== expectedCode) return;
+    setDetailBusy(false);
     if (!detail) {
-      $right.innerHTML = emptyState('無法載入商品資料', '連線可能暫時中斷，再試一次看看。', 'info', true);
+      showDetailMessage(emptyState('無法載入商品資料', '連線可能暫時中斷，再試一次看看。', 'info', true));
       return;
     }
     const stationsRaw = detail.stations.filter((s) => s.quantity > 0).map((s) => {
@@ -681,7 +774,7 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
         const active = state.branch === b ? ' is-active' : '';
         const label = b === 'all' ? '全部' : b.replace('據點', '');
         const count = b === 'all' ? stationsRaw.length : stationsRaw.filter((s) => s.branch_name === b).length;
-        return `<button class="yt-bpill${active}" type="button" data-branch="${escapeHtml(b)}" aria-pressed="${state.branch === b}">
+        return `<button class="yt-bpill${active}" data-query-key="branch:${escapeHtml(b)}" type="button" data-branch="${escapeHtml(b)}" aria-pressed="${state.branch === b}">
           <span>${escapeHtml(label)}</span><span class="yt-bpill-count">${count}</span>
         </button>`;
       })
@@ -690,21 +783,16 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       ? '已依距離排序 · ' + (userPos ? '使用裝置定位' : '無定位資料')
       : `${stationsShown.length} 個站點仍有現貨`;
 
-    $right.innerHTML = `
-      <div class="yt-panel-head">
-        <div style="min-width:0">
-          <div class="yt-panel-title">${escapeHtml(product.product_name)}</div>
-          <div class="yt-panel-sub">${escapeHtml(subText)}</div>
-        </div>
-      </div>
-      <div class="yt-bpills">${branchPills}</div>
-      <div class="yt-srows yt-srows--scroll">
+    setDetailHeading(product.product_name, subText);
+    patchQueryPart($detailPills, branchPills);
+    $detailPills.hidden = false;
+    patchQueryPart($detailRows, `
         ${stationsShown.length === 0
           ? emptyState('此分區暫無現貨', '換個分區，看看其他站點的庫存。', 'map-pin')
           : stationsShown
               .map(
                 (s) => `
-        <div class="yt-srow">
+        <div class="yt-srow" data-query-key="station:${escapeHtml(s.station_id)}">
           <div class="yt-srow-photo">${icon('map-pin', { size: 18, weight: 'fill' })}</div>
           <div class="yt-srow-meta">
             <div class="yt-srow-branch">${escapeHtml(s.branch_name)}</div>
@@ -714,56 +802,48 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
           <div class="yt-srow-right">
             ${
               state.located && s.distanceKm != null
-                ? `<div class="yt-srow-dist">${formatDistance(s.distanceKm)}</div>`
+                ? `<div class="yt-srow-dist" data-query-key="distance">${formatDistance(s.distanceKm)}</div>`
                 : ''
             }
-            <div class="yt-srow-qty"><strong>${s.quantity}</strong> 條</div>
+            <div class="yt-srow-qty" data-query-key="quantity"><strong>${s.quantity}</strong> 條</div>
           </div>
         </div>`,
               )
-              .join('')}
-      </div>
-      <div class="yt-panel-foot">
-        ${icon('info', { size: 14, weight: 'regular' })}
-        <span>${stationsShown.length} 個有貨站點 · 可滾動瀏覽</span>
-      </div>
-    `;
-    if (mobileLayout.matches) {
-      const pills = $right.querySelector<HTMLElement>('.yt-bpills');
-      if (pills) {
-        pills.addEventListener('scroll', () => updateBranchFades(pills), { passive: true });
-        revealSelectedBranch(pills);
-      }
-    }
+              .join('')}`);
+    patchQueryPart($detailFoot, `${icon('info', { size: 14, weight: 'regular' })}<span>${stationsShown.length} 個有貨站點 · 可滾動瀏覽</span>`);
+    $detailFoot.hidden = false;
+    if (mobileLayout.matches) revealSelectedBranch($detailPills);
   }
 
-  async function renderStationStock() {
+  async function renderStationStock(revision: number) {
     const tid = state.pickedStation;
     const station = stationById.get(tid);
-    if (!station) return;
-    const heading = `<div class="yt-panel-head"><div style="min-width:0">
-      <div class="yt-panel-title">${escapeHtml(station.station_name)}</div>
-      <div class="yt-panel-sub">${escapeHtml(station.station_addr)}</div>
-    </div></div>`;
-    $right.innerHTML = heading + emptyState('載入庫存中…', '正在取得目前庫存，請稍候。', 'cards');
-    const rows = await loadStationDetail(tid);
-    if (state.view !== 'stations' || state.pickedStation !== tid) return;
+    if (!station) {
+      setDetailBusy(false);
+      showDetailMessage(emptyState('目前沒有可用站點', '稍後再來看看站點庫存。', 'cards'), true);
+      return;
+    }
+    const loading = !stationDetailCache.has(tid);
+    prepareDetail(`station:${tid}`, station.station_name, station.station_addr, loading);
+    const rows = await waitForDetail(loadStationDetail(tid), loading,
+      emptyState('載入庫存中…', '正在取得目前庫存，請稍候。', 'cards'), revision);
+    if (revision !== detailRenderRevision || state.view !== 'stations' || state.pickedStation !== tid) return;
+    setDetailBusy(false);
     if (!rows) {
-      $right.innerHTML = heading + emptyState('無法載入站點資料', '連線可能暫時中斷，再試一次看看。', 'info', true);
+      showDetailMessage(emptyState('無法載入站點資料', '連線可能暫時中斷，再試一次看看。', 'info', true));
       return;
     }
     const inStock = rows.filter((r) => r.quantity > 0).sort((a, b) => b.quantity - a.quantity);
     const count = $resultList.querySelector<HTMLElement>(`[data-count="${CSS.escape(tid)}"]`);
     if (count) count.textContent = `${inStock.length} 款`;
-    $right.innerHTML = `${heading}
-      <div class="yt-srows yt-srows--scroll">
+    patchQueryPart($detailRows, `
         ${inStock.length === 0
           ? emptyState('此站點目前無庫存', '換個站點看看，或稍後再來查詢。', 'cards')
           : inStock
               .map((p) => {
                 const accent = accentFor(p.product_name);
                 return `
-        <button class="yt-srow yt-srow--clickable" type="button"
+        <button class="yt-srow yt-srow--clickable" type="button" data-query-key="product:${escapeHtml(p.commodity_code)}"
                 data-pick-product="${escapeHtml(p.commodity_code)}"
                 aria-label="${escapeHtml(p.product_name)} 查全台分布">
           <div class="yt-srow-photo" style="background:color-mix(in srgb, ${accent} 18%, transparent)">
@@ -780,14 +860,13 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
           </div>
         </button>`;
               })
-              .join('')}
-      </div>
-    `;
+              .join('')}`);
   }
 
   async function renderAll() {
-    contentAnimation?.cancel();
-    contentAnimation = undefined;
+    const focused = document.activeElement as HTMLElement | null;
+    const preserveFocus = focused !== null && consoleEl.contains(focused);
+    const revision = ++detailRenderRevision;
     renderedView = state.view;
     const fromHeight = panelHeightReady && mobileLayout.matches && !reducedMotion.matches
       ? consoleEl.getBoundingClientRect().height : undefined;
@@ -795,53 +874,38 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
       consoleEl.style.height = `${fromHeight}px`;
       consoleEl.classList.toggle('is-resizing', true);
     }
-    renderRevision++;
     // Preserve the shared panel before replacing the mobile list markup.
-    $grid.append($right);
+    if ($right.parentElement !== $grid) $grid.append($right);
     renderSeg();
     renderResultList();
     renderUnavailableFavorites();
     $clear.hidden = state.keyword === '';
     const details = placeDetails()
-      ? state.view === 'products' ? renderRightProduct() : renderStationStock()
+      ? state.view === 'products' ? renderRightProduct(revision) : renderStationStock(revision)
       : undefined;
     if (fromHeight !== undefined) resizePanel?.(fromHeight);
     await details;
-  }
-
-  function fadeContent(target: HTMLElement): void {
-    if (reducedMotion.matches || typeof target.animate !== 'function') return;
-    contentAnimation?.cancel();
-    contentAnimation = target.animate([{ opacity: 0.55 }, { opacity: 1 }], {
-      duration: 160, easing: 'ease-out',
-    });
+    if (revision === detailRenderRevision && preserveFocus && focused.isConnected && document.activeElement === document.body) {
+      focused.focus({ preventScroll: true });
+    }
   }
 
   function renderWithMotion(afterRender?: () => void): void {
-    const viewChanged = renderedView !== state.view;
-    if (viewChanged) resetPanelHeight?.();
-    const pending = renderAll();
-    const revision = renderRevision;
+    if (renderedView !== state.view) resetPanelHeight?.();
+    void renderAll();
     afterRender?.();
-    if (viewChanged) fadeContent($grid);
-    void pending.then(() => {
-      if (revision !== renderRevision || viewChanged || $right.hidden) return;
-      fadeContent($right);
-    });
   }
 
   // ---- Event handlers ----
-  reducedMotion.addEventListener('change', () => {
-    if (!reducedMotion.matches) return;
-    contentAnimation?.cancel();
-    contentAnimation = undefined;
-  });
   window.addEventListener('resize', () => {
+    resetPanelHeight?.();
     if (!mobileLayout.matches) return;
     const pills = $right.querySelector<HTMLElement>('.yt-bpills');
     if (pills) revealSelectedBranch(pills);
   });
-  mobileLayout.addEventListener('change', () => { renderAll(); });
+  mobileLayout.addEventListener('change', () => {
+    renderAll();
+  });
   window.addEventListener('storage', (event) => {
     if (event.storageArea !== localStorage || (event.key !== FAVORITES_KEY && event.key !== null)) return;
     try {
@@ -1047,9 +1111,149 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
     );
   }
 
+  let refreshTask: Promise<void> | undefined;
+  let forceRefreshRequested = false;
+  let notifiedVersion: string | null = null;
+  function notifyUpdate(status: InventoryStatus): void {
+    if (status.last_updated === notifiedVersion) return;
+    opts.onUpdate?.(status, products);
+    notifiedVersion = status.last_updated;
+  }
+  async function readUpdate<T>(url: string): Promise<T> {
+    const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(15_000) });
+    if (!response.ok) throw new Error(`Inventory update failed: ${response.status}`);
+    return response.json() as Promise<T>;
+  }
+
+  function checkForUpdates(force = false): Promise<void> {
+    if (force) forceRefreshRequested = true;
+    if (refreshTask) return refreshTask;
+    if (document.visibilityState === 'hidden') {
+      forceRefreshRequested = false;
+      return Promise.resolve();
+    }
+    refreshTask = (async () => {
+      let selectionChanged: boolean;
+      do {
+        const forceCurrentPass = forceRefreshRequested;
+        forceRefreshRequested = false;
+        selectionChanged = Boolean(await synchronizeSnapshot(forceCurrentPass));
+      } while (selectionChanged || forceRefreshRequested);
+    })().finally(() => { refreshTask = undefined; });
+    return refreshTask;
+  }
+
+  async function synchronizeSnapshot(force: boolean): Promise<boolean | void> {
+    if (document.visibilityState === 'hidden') return;
+    try {
+      // Reading products also triggers the backend's lazy TTL refresh.
+      let next = await readUpdate<{ products: ProductSummary[]; last_updated: string | null }>('/api/products');
+      const status = await readUpdate<InventoryStatus>('/api/status');
+      if (!status.last_updated || !Number.isFinite(Date.parse(status.last_updated))) return;
+      if (dataVersion && Date.parse(status.last_updated) < Date.parse(dataVersion)) return;
+      if (next.last_updated !== status.last_updated) {
+        next = await readUpdate<typeof next>('/api/products');
+      }
+      if (next.last_updated !== status.last_updated) return;
+      if (!force && dataVersion === status.last_updated) {
+        notifyUpdate(status);
+        return;
+      }
+      const [nextStations, counts] = await Promise.all([
+        readUpdate<{ branches: BranchGroup[] }>('/api/stations'),
+        readUpdate<{ counts: Record<string, { product_count: number }>; last_updated: string | null }>('/api/stations/counts'),
+      ]);
+      if (counts.last_updated !== status.last_updated) return;
+      const stations = nextStations.branches.flatMap((b) =>
+        b.stations.map((station) => ({ ...station, branch_name: b.branch_name })),
+      );
+      const nextCounts = Object.fromEntries(Object.entries(counts.counts).map(([id, value]) => [id, value.product_count]));
+      const view = state.view;
+      const previousProduct = state.pickedProduct;
+      const previousStation = state.pickedStation;
+      const product = next.products.some((p) => p.commodity_code === previousProduct)
+        ? previousProduct : next.products[0]?.commodity_code ?? '';
+      const station = stations.some((s) => s.station_id === previousStation)
+        ? previousStation : stations[0]?.station_id ?? '';
+      let detail: ProductDetail | undefined;
+      let stock: StationProductRow[] | undefined;
+      if (view === 'products' && product) {
+        detail = await readUpdate<ProductDetail>(`/api/products/${encodeURIComponent(product)}`);
+        if (detail.last_updated !== status.last_updated || !Array.isArray(detail.stations)) return;
+      } else if (view === 'stations' && station) {
+        const result = await readUpdate<{ stock: StationProductRow[]; last_updated: string | null }>(`/api/stations/${encodeURIComponent(station)}`);
+        if (result.last_updated !== status.last_updated || !Array.isArray(result.stock)) return;
+        stock = result.stock;
+      }
+      if (state.view !== view || state.pickedProduct !== previousProduct || state.pickedStation !== previousStation) {
+        return true;
+      }
+      const sameDetail = view === 'products' ? product === previousProduct : station === previousStation;
+      const previousList = sameDetail && !$right.hidden ? $right.querySelector<HTMLElement>('.yt-srows--scroll') : null;
+      const detailScrollTop = previousList?.scrollTop;
+      const listBounds = previousList?.getBoundingClientRect();
+      const internalScroll = previousList ? previousList.scrollHeight > previousList.clientHeight : false;
+      const readingRow = previousList && listBounds && (internalScroll || listBounds.top < 0) ? Array.from(previousList.children).find((row) => {
+        const bounds = row.getBoundingClientRect();
+        return row.hasAttribute('data-query-key') && bounds.bottom > Math.max(0, listBounds.top)
+          && bounds.top < Math.min(window.innerHeight, listBounds.bottom);
+      }) as HTMLElement | undefined : undefined;
+      const readingOffset = readingRow ? readingRow.getBoundingClientRect().top - (internalScroll ? listBounds!.top : 0) : 0;
+      // Commit one complete version; older requests cannot repopulate its caches.
+      dataGeneration++;
+      dataVersion = status.last_updated;
+      products = next.products;
+      branches = nextStations.branches;
+      allStations = stations;
+      allBranchNames = Array.from(new Set(branches.map((b) => b.branch_name)));
+      stationById = new Map(stations.map((s) => [s.station_id, s]));
+      stationCounts = nextCounts;
+      productDetailCache.clear();
+      stationDetailCache.clear();
+      if (detail) productDetailCache.set(product, detail);
+      if (stock) stationDetailCache.set(station, stock);
+      state.pickedProduct = product;
+      state.pickedStation = station;
+      if (state.branch !== 'all' && !allBranchNames.includes(state.branch)) state.branch = 'all';
+      if (product !== previousProduct || station !== previousStation) persistState();
+      const focused = document.activeElement as HTMLElement | null;
+      const focusedInConsole = focused !== null && consoleEl.contains(focused);
+      const focusKey = focusedInConsole ? focused.dataset : undefined;
+      const selector = focusKey?.code ? `[data-code="${CSS.escape(focusKey.code)}"]`
+        : focusKey?.tid ? `[data-tid="${CSS.escape(focusKey.tid)}"]`
+        : focusKey?.pickProduct ? `[data-pick-product="${CSS.escape(focusKey.pickProduct)}"]`
+        : focusKey?.favorite ? `[data-favorite="${CSS.escape(focusKey.favorite)}"]`
+        : focusKey?.branch ? `[data-branch="${CSS.escape(focusKey.branch)}"]` : null;
+      await renderAll();
+      const detailList = $right.querySelector<HTMLElement>('.yt-srows--scroll');
+      if (detailList && detailScrollTop !== undefined) {
+        if (readingRow && detailList.contains(readingRow)) {
+          const offset = readingRow.getBoundingClientRect().top - (internalScroll ? detailList.getBoundingClientRect().top : 0);
+          if (internalScroll) detailList.scrollTop = Math.max(0, Math.min(detailList.scrollTop + offset - readingOffset, detailList.scrollHeight - detailList.clientHeight));
+          else if (Math.abs(offset - readingOffset) > 1) window.scrollTo({ top: window.scrollY + offset - readingOffset, behavior: 'auto' });
+        } else {
+          detailList.scrollTop = Math.min(detailScrollTop, Math.max(0, detailList.scrollHeight - detailList.clientHeight));
+        }
+      }
+      if (focusedInConsole && (selector || !consoleEl.contains(focused))) {
+        const nextFocus = selector ? consoleEl.querySelector<HTMLElement>(selector) : null;
+        (nextFocus ?? $input).focus({ preventScroll: true });
+      }
+      notifyUpdate(status);
+    } catch {
+      // Keep the displayed version and retry on the next poll or foreground event.
+    }
+  }
+
   // ---- Initial render ----
   $input.value = state.keyword;
   await renderAll();
+  await checkForUpdates();
+  window.setInterval(() => { void checkForUpdates(); }, STATUS_REFRESH_INTERVAL_MS);
+  window.addEventListener('focus', () => { void checkForUpdates(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void checkForUpdates();
+  });
 
   return {
     pickProduct: pickProductInternal,

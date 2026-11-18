@@ -9,6 +9,11 @@ export default defineConfig({
   // og:url / og:image absolute paths in the page heads.
   site: SITE_URL,
 
+  // Preserve Astro 6 whitespace between inline elements after the compiler upgrade.
+  compressHTML: true,
+
+  build: { inlineStylesheets: 'auto' },
+
   integrations: [
     sitemap({
       // The homepage contains the complete query experience. Keep the lean
