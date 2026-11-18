@@ -4,8 +4,8 @@
  * Returns an inline <svg> string sized by `size` (px). Uses `currentColor`
  * so colour follows the surrounding text style — no external CSS or font.
  *
- * Path data copied verbatim from @phosphor-icons/core@2.1.1. Only the
- * icons actually used in this site are bundled.
+ * Most paths come from @phosphor-icons/core@2.1.1. Only icons used
+ * in this site are bundled.
  */
 export type IconWeight = 'regular' | 'bold' | 'fill';
 export type IconName =
@@ -14,6 +14,7 @@ export type IconName =
   | 'caret-down'
   | 'caret-right'
   | 'check-circle'
+  | 'crosshair'
   | 'github-logo'
   | 'info'
   | 'link'
@@ -24,6 +25,9 @@ export type IconName =
   | 'x';
 
 type IconKey = `${IconName}-${IconWeight}`;
+
+const CROSSHAIR_PATH =
+  'M128,40a88,88,0,1,0,88,88A88,88,0,0,0,128,40Zm0,152a64,64,0,1,1,64-64A64,64,0,0,1,128,192ZM116,12h24v26h-24ZM116,218h24v26h-24ZM12,116h26v24H12ZM218,116h26v24H218Z';
 
 const PATHS: Partial<Record<IconKey, string>> = {
   'barcode-bold':
@@ -36,6 +40,8 @@ const PATHS: Partial<Record<IconKey, string>> = {
     'M184.49,136.49l-80,80a12,12,0,0,1-17-17L159,128,87.51,56.49a12,12,0,1,1,17-17l80,80A12,12,0,0,1,184.49,136.49Z',
   'check-circle-fill':
     'M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm45.66,85.66-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z',
+  'crosshair-bold': CROSSHAIR_PATH,
+  'crosshair-fill': `${CROSSHAIR_PATH}M128,100a28,28,0,1,0,28,28A28,28,0,0,0,128,100Z`,
   'github-logo-bold':
     'M212.62,75.17A63.7,63.7,0,0,0,206.39,26,12,12,0,0,0,196,20a63.71,63.71,0,0,0-50,24H126A63.71,63.71,0,0,0,76,20a12,12,0,0,0-10.39,6,63.7,63.7,0,0,0-6.23,49.17A61.5,61.5,0,0,0,52,104v8a60.1,60.1,0,0,0,45.76,58.28A43.66,43.66,0,0,0,92,192v4H76a20,20,0,0,1-20-20,44.05,44.05,0,0,0-44-44,12,12,0,0,0,0,24,20,20,0,0,1,20,20,44.05,44.05,0,0,0,44,44H92v12a12,12,0,0,0,24,0V192a20,20,0,0,1,40,0v40a12,12,0,0,0,24,0V192a43.66,43.66,0,0,0-5.76-21.72A60.1,60.1,0,0,0,220,112v-8A61.5,61.5,0,0,0,212.62,75.17ZM196,112a36,36,0,0,1-36,36H112a36,36,0,0,1-36-36v-8a37.87,37.87,0,0,1,6.13-20.12,11.65,11.65,0,0,0,1.58-11.49,39.9,39.9,0,0,1-.4-27.72,39.87,39.87,0,0,1,26.41,17.8A12,12,0,0,0,119.82,68h32.35a12,12,0,0,0,10.11-5.53,39.84,39.84,0,0,1,26.41-17.8,39.9,39.9,0,0,1-.4,27.72,12,12,0,0,0,1.61,11.53A37.85,37.85,0,0,1,196,104Z',
   'info-regular':
@@ -62,9 +68,7 @@ export function icon(
   name: IconName,
   opts: { size?: number; weight?: IconWeight } = {},
 ): string {
-  // 11/15 bundled paths are 'bold' weight; defaulting to 'bold' matches the
-  // overwhelming majority of call sites and avoids silent misses when a
-  // caller forgets to set weight (only `info` ships a 'regular' path).
+  // Most icons ship a bold path, which matches the default at call sites.
   const weight = opts.weight ?? 'bold';
   // Coerce size at the boundary — TS type doesn't help JS callers.
   const rawSize = Number(opts.size);
