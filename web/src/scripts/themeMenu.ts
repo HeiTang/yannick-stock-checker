@@ -6,8 +6,8 @@
 
 import {
   DIRECTIONS,
-  applyDirection,
-  readSavedTheme,
+  applyTheme,
+  readTheme,
   writeSavedTheme,
   type ThemeKey,
   type ThemeMode,
@@ -38,9 +38,8 @@ export function initThemeMenu(opts: ThemeMenuOptions): { setDir: (k: ThemeKey) =
   const btn = document.querySelector<HTMLButtonElement>(opts.buttonSelector);
   if (!btn) return { setDir: () => {} };
 
-  let state = readSavedTheme();
+  let state = readTheme();
   let popup: HTMLDivElement | null = null;
-  applyDirection(opts.page, state.dir, { mode: state.mode, glow: 1.2 });
   renderBtn();
 
   function renderBtn() {
@@ -136,7 +135,7 @@ export function initThemeMenu(opts: ThemeMenuOptions): { setDir: (k: ThemeKey) =
   }
 
   function applyChange() {
-    applyDirection(opts.page, state.dir, { mode: state.mode, glow: 1.2 });
+    applyTheme(state);
     writeSavedTheme(state);
     renderBtn();
     opts.onChange?.(state.dir, state.mode);

@@ -1,0 +1,38 @@
+---
+import { DIRECTIONS, THEME_STORAGE_KEY, themeVars, type ThemeMode } from '../scripts/theme.ts';
+
+const modes = ['light', 'dark'] as const satisfies readonly ThemeMode[];
+const themes = Object.fromEntries(Object.values(DIRECTIONS).map((dir) => [dir.key, {
+  defaultMode: dir.defaultMode,
+  light: dir.modes.light['--yt-surface'],
+  dark: dir.modes.dark['--yt-surface'],
+}]));
+const css = Object.values(DIRECTIONS).flatMap((dir) => modes.map((mode) => {
+  const selector = `:root[data-yt-dir="${dir.key}"][data-yt-mode="${mode}"]`;
+  const declarations = Object.entries(themeVars(dir, mode)).map(([name, value]) => `${name}:${value}`).join(';');
+  const fallback = dir.key === 'cream' && mode === 'light' ? ':root,' : '';
+  return `${fallback}${selector}{color-scheme:${mode};${declarations}}`;
+})).join('\n');
+---
+
+<meta name="theme-color" content={themes.cream.light} />
+<style is:inline set:html={css}></style>
+<script define:vars={{ themes, storageKey: THEME_STORAGE_KEY }}>
+  const root = document.documentElement;
+  const params = new URLSearchParams(location.search);
+  let saved;
+  try {
+    saved = JSON.parse(localStorage.getItem(storageKey));
+  } catch {
+    // Storage can be blocked or contain invalid JSON.
+  }
+  const validDir = (dir) => typeof dir === 'string' && Object.hasOwn(themes, dir);
+  const validMode = (mode) => mode === 'light' || mode === 'dark';
+  const urlDir = params.get('dir');
+  const urlMode = params.get('mode');
+  const dir = validDir(urlDir) ? urlDir : validDir(saved?.dir) ? saved.dir : 'cream';
+  const mode = validMode(urlMode) ? urlMode : validMode(saved?.mode) ? saved.mode : themes[dir].defaultMode;
+  root.dataset.ytDir = dir;
+  root.dataset.ytMode = mode;
+  document.querySelector('meta[name="theme-color"]').content = themes[dir][mode];
+</script>
