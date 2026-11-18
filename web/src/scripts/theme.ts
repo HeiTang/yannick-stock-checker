@@ -139,71 +139,43 @@ export const DIRECTIONS: Record<ThemeKey, ThemeDirection> = {
   },
 };
 
-export function resolveMode(key: ThemeKey, mode?: ThemeMode): ThemeMode {
-  const dir = DIRECTIONS[key] ?? DIRECTIONS.cream;
-  if (mode === 'light' || mode === 'dark') return mode;
-  return dir.defaultMode;
-}
-
-export interface ApplyOptions {
-  mode?: ThemeMode;
-  glow?: number;
-}
-
-export function applyDirection(
-  el: HTMLElement,
-  key: ThemeKey,
-  opts: ApplyOptions = {},
-): { dir: ThemeDirection; mode: ThemeMode } {
-  const dir = DIRECTIONS[key] ?? DIRECTIONS.cream;
-  const glow = opts.glow ?? 1;
-  const mode = resolveMode(key, opts.mode);
-
-  el.classList.toggle('theme-dark', mode === 'dark');
-
-  const vars = { ...dir.shared, ...dir.modes[mode] };
-  Object.entries(vars).forEach(([k, v]) => el.style.setProperty(k, v));
-  el.style.setProperty('--yt-brand', dir.brand);
-  el.style.setProperty('--yt-brand-2', dir.brand2);
-  el.style.setProperty('--yt-glow', String(glow));
-  el.style.setProperty('--tint', dir.brand);
-  el.style.setProperty('--tint-pressed', dir.brand2);
-  el.style.setProperty('--glow-color', dir.brand);
-
-  return { dir, mode };
-}
-
-const STORAGE_KEY = 'ytm.theme';
-
 export interface ThemeState {
   dir: ThemeKey;
   mode: ThemeMode;
 }
 
-export function readSavedTheme(): ThemeState {
-  let dir: ThemeKey = 'cream';
-  let mode: ThemeMode | undefined;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.dir && DIRECTIONS[parsed.dir as ThemeKey]) dir = parsed.dir;
-      if (parsed.mode === 'light' || parsed.mode === 'dark') mode = parsed.mode;
-    }
-  } catch {
-    /* ignore */
-  }
-  const u = new URLSearchParams(location.search);
-  const urlDir = u.get('dir');
-  const urlMode = u.get('mode');
-  if (urlDir && DIRECTIONS[urlDir as ThemeKey]) dir = urlDir as ThemeKey;
-  if (urlMode === 'light' || urlMode === 'dark') mode = urlMode;
-  return { dir, mode: resolveMode(dir, mode) };
+export const THEME_STORAGE_KEY = 'ytm.theme';
+
+export function themeVars(dir: ThemeDirection, mode: ThemeMode): Record<string, string> {
+  return {
+    ...dir.shared,
+    ...dir.modes[mode],
+    '--yt-brand': dir.brand,
+    '--yt-brand-2': dir.brand2,
+    '--yt-glow': '1.2',
+    '--tint': dir.brand,
+    '--tint-pressed': dir.brand2,
+    '--glow-color': dir.brand,
+    '--yt-root-bg': dir.modes[mode]['--yt-surface'],
+  };
+}
+
+export function readTheme(): ThemeState {
+  const { ytDir, ytMode } = document.documentElement.dataset;
+  const dir = ytDir && Object.hasOwn(DIRECTIONS, ytDir) ? (ytDir as ThemeKey) : 'cream';
+  const mode = ytMode === 'light' || ytMode === 'dark' ? ytMode : DIRECTIONS[dir].defaultMode;
+  return { dir, mode };
+}
+
+export function applyTheme({ dir, mode }: ThemeState): void {
+  document.documentElement.dataset.ytDir = dir;
+  document.documentElement.dataset.ytMode = mode;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', DIRECTIONS[dir].modes[mode]['--yt-surface']);
 }
 
 export function writeSavedTheme(state: ThemeState): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(state));
   } catch {
     /* ignore */
   }

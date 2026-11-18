@@ -4,6 +4,7 @@ import '../styles/landing.css';
 import { icon } from '../scripts/icon.ts';
 import { rollSwirlSvg, brandMarkSvg } from '../scripts/svg.ts';
 import GoogleAnalytics from '../components/GoogleAnalytics.astro';
+import ThemeBootstrap from '../components/ThemeBootstrap.astro';
 import { GITHUB_REPOSITORY_URL, SITE_HOSTNAME } from '../config.ts';
 
 const title = '亞尼克・庫存雷達 · YTM Stock Radar';
@@ -26,15 +27,15 @@ const apiEndpoints = [
 <!doctype html>
 <html lang="zh-Hant">
   <head>
-    <GoogleAnalytics />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <ThemeBootstrap />
+    <GoogleAnalytics />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png" />
     <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
-    <meta name="theme-color" content="#120A11" />
 
     <!-- Open Graph (Facebook / LINE / Discord / etc.) -->
     <meta property="og:type" content="website" />

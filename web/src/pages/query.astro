@@ -1,6 +1,7 @@
 ---
 import '../styles/query.css';
 import GoogleAnalytics from '../components/GoogleAnalytics.astro';
+import ThemeBootstrap from '../components/ThemeBootstrap.astro';
 
 const title = '快速查庫存 · 亞尼克・庫存雷達';
 const description =
@@ -12,16 +13,16 @@ const ogImage = new URL('/og-image.jpg', Astro.site).href;
 <!doctype html>
 <html lang="zh-Hant">
   <head>
-    <GoogleAnalytics />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <ThemeBootstrap />
+    <GoogleAnalytics />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <meta name="robots" content="noindex,follow" />
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png" />
     <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
-    <meta name="theme-color" content="#120A11" />
 
     <!-- Open Graph (Facebook / LINE / Discord / etc.) -->
     <meta property="og:type" content="website" />

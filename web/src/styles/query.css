@@ -951,7 +951,7 @@ body {
   color: color-mix(in srgb, var(--yt-favorite-accent, var(--yt-brand)) 80%, var(--yt-ink));
   cursor: pointer;
 }
-.theme-dark .yt-favorite {
+[data-yt-mode='dark'] .yt-favorite {
   color: color-mix(in srgb, var(--yt-favorite-accent, var(--yt-brand)) 55%, var(--yt-ink));
 }
 .yt-favorite:hover {
