@@ -429,7 +429,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 372px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -553,7 +552,6 @@ body {
   gap: 8px;
 }
 .yt-srows--scroll {
-  max-height: 360px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -723,26 +721,28 @@ body {
   .yt-lean-main {
     min-height: 390px;
   }
-  .yt-console--lean {
+  /* 兩欄撐滿 console 高度：清單與庫存列捲動，panel-foot 貼底。console 高度由頁面決定。 */
+  .yt-console {
     min-height: 0;
-    flex: 1;
     display: flex;
     flex-direction: column;
   }
-  .yt-console--lean .yt-console-grid {
+  .yt-console--lean {
+    flex: 1;
+  }
+  .yt-console-grid {
     min-height: 0;
     flex: 1;
     grid-template-rows: minmax(0, 1fr);
   }
-  .yt-console--lean .yt-console-left,
-  .yt-console--lean .yt-console-right {
+  .yt-console-left,
+  .yt-console-right {
     min-height: 0;
   }
-  .yt-console--lean .yt-result-list,
-  .yt-console--lean .yt-srows--scroll {
+  .yt-result-list,
+  .yt-srows--scroll {
     height: 0;
     min-height: 0;
-    max-height: none;
     flex: 1;
   }
 }
@@ -794,13 +794,6 @@ body {
     padding-left: 0;
     border-top: 1px solid var(--yt-hairline);
     padding-top: 16px;
-  }
-  .yt-result-list,
-  .yt-console--lean .yt-result-list,
-  .yt-srows--scroll,
-  .yt-console--lean .yt-srows--scroll {
-    height: auto;
-    max-height: none;
   }
   .yt-query-item:has(> .yt-choice.is-active) {
     border-radius: 13px;
