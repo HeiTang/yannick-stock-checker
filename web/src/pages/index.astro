@@ -76,7 +76,7 @@ const apiEndpoints = [
         isAccessibleForFree: true,
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'TWD' },
         disambiguatingDescription:
-          '非官方工具，與亞尼克無官方關聯；相關商標權利屬原權利人所有。',
+          '非官方工具，與亞尼克無關聯，商標屬原權利人所有。資料來自亞尼克 YTM 站點查詢並快取更新，查詢不保留商品，實際庫存以現場為準。',
       })}
     />
   </head>
@@ -196,13 +196,15 @@ const apiEndpoints = [
         </section>
 
         <section class="yt-section" id="query">
-          <p class="yt-section-sub">
-            本工具彙整<a class="yt-source-link" href="https://www.yannick.com.tw/ytm/service2">亞尼克 YTM 站點查詢</a>資料，
-            提供商品與站點雙視角查詢。庫存採快取更新，請依頁面顯示的資料更新時間判斷新鮮度；
-            查詢結果不會保留商品，實際庫存與販售狀況以現場為準。
-          </p>
+          <div class="yt-section-head">
+            <div>
+              <div class="yt-kicker">互動查詢</div>
+              <h2 class="yt-h2">雙視角查庫存，一次找對</h2>
+            </div>
+            <p class="yt-section-sub" data-section-sub>商品視角：搜尋商品、開啟定位依距離找最近的取貨站點。</p>
+          </div>
           <noscript>
-            <p class="yt-section-sub">庫存查詢需要啟用 JavaScript；也可前往上方的亞尼克官方站點查詢。</p>
+            <p class="yt-section-sub">庫存查詢需要啟用 JavaScript；也可前往<a class="yt-source-link" href="https://www.yannick.com.tw/ytm/service2">亞尼克 YTM 站點查詢</a>。</p>
           </noscript>
           <div id="query-console"></div>
         </section>
@@ -300,7 +302,7 @@ const apiEndpoints = [
             </div>
             <div class="yt-footer-rule"></div>
             <div class="yt-footer-bottom">
-              <span>本專案為非官方工具，與亞尼克無官方關聯；相關商標權利屬原權利人所有。</span>
+              <span class="yt-footer-note">非官方工具，與亞尼克無關聯，商標屬原權利人所有。資料來自<a class="yt-source-link" href="https://www.yannick.com.tw/ytm/service2">亞尼克 YTM 站點查詢</a>並快取更新，查詢不保留商品，實際庫存以現場為準。</span>
               <span class="yt-updated">資料更新 <span id="updated-at">--:--</span></span>
               <span>MIT License · © 2026–present</span>
             </div>

@@ -112,6 +112,14 @@ body {
 .yt-foot-separator {
   display: none;
 }
+.yt-source-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.yt-source-link:hover {
+  color: var(--yt-ink);
+}
 
 .yt-wordmark {
   font-size: 16px;
@@ -739,11 +747,11 @@ body {
   }
 }
 @media (max-width: 940px) {
-  .yt-query-page > .yt-page {
+  .yt-page {
     isolation: isolate;
     background: none;
   }
-  .yt-query-page > .yt-page::before {
+  .yt-page::before {
     content: '';
     position: fixed;
     inset: 0;
