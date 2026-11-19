@@ -739,11 +739,11 @@ body {
   }
 }
 @media (max-width: 940px) {
-  .yt-query-page > .yt-page {
+  .yt-page {
     isolation: isolate;
     background: none;
   }
-  .yt-query-page > .yt-page::before {
+  .yt-page::before {
     content: '';
     position: fixed;
     inset: 0;
