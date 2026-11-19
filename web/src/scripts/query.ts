@@ -112,7 +112,8 @@ export interface InitOptions {
   rootSelector?: string;
   persist?: boolean;
   lean?: boolean;
-  sectionHead?: { kicker: string; title: string };
+  /** SSR 輸出的區塊副標，隨視角切換更新文字。 */
+  sectionSub?: HTMLElement | null;
 }
 
 const VIEW_SUBS: Record<ViewMode, string> = {
@@ -251,26 +252,10 @@ export async function initQueryConsole(opts: InitOptions = {}): Promise<QueryHan
   let renderedView = state.view;
 
   // ---- DOM ----
-  let consoleEl: HTMLElement = root;
-  let $sectionSub: HTMLElement | null = null;
-  if (!lean && opts.sectionHead) {
-    root.innerHTML = `
-      <div class="yt-section-head">
-        <div>
-          <div class="yt-kicker">${escapeHtml(opts.sectionHead.kicker)}</div>
-          <h2 class="yt-h2">${escapeHtml(opts.sectionHead.title)}</h2>
-        </div>
-        <p class="yt-section-sub" data-section-sub></p>
-      </div>
-      <div class="yt-console"></div>
-    `;
-    consoleEl = root.querySelector<HTMLElement>('.yt-console')!;
-    $sectionSub = root.querySelector<HTMLElement>('[data-section-sub]');
-  } else {
-    root.classList.add('yt-console');
-    if (lean) root.classList.add('yt-console--lean');
-    consoleEl = root;
-  }
+  const consoleEl: HTMLElement = root;
+  const $sectionSub = opts.sectionSub ?? null;
+  root.classList.add('yt-console');
+  if (lean) root.classList.add('yt-console--lean');
 
   consoleEl.innerHTML = `
     <div class="yt-console-grid">

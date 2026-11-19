@@ -67,7 +67,7 @@ export async function initLanding(opts: LandingOptions = {}): Promise<void> {
     rootSelector: '#query-console',
     persist: true,
     lean: false,
-    sectionHead: { kicker: '互動查詢', title: '雙視角查庫存，一次找對' },
+    sectionSub: document.querySelector<HTMLElement>('#query [data-section-sub]'),
     onUpdate: renderHeroAndWall,
   }).then((h) => {
     queryHandle = h;
