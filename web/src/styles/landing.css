@@ -712,6 +712,10 @@
   #query [data-section-sub] {
     max-width: none;
   }
+  /* 固定高度：切換商品／站點視角不跳動。 */
+  #query-console {
+    height: clamp(520px, calc(100dvh - 220px), 680px);
+  }
 }
 @media (max-width: 940px) {
   .yt-hero-grid {
