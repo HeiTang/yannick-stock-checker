@@ -418,10 +418,6 @@
   max-width: 42ch;
   margin: 0;
 }
-.yt-source-link {
-  color: var(--yt-ink);
-  text-decoration: underline;
-}
 
 /* ---------- Product wall ---------- */
 .yt-wall-grid {
@@ -706,8 +702,17 @@
   font-size: 12.5px;
   color: var(--yt-ink-3);
 }
+.yt-footer-note {
+  flex-basis: 100%;
+  line-height: 1.6;
+}
 
 /* ---------- Responsive ---------- */
+@media (min-width: 941px) {
+  #query [data-section-sub] {
+    max-width: none;
+  }
+}
 @media (max-width: 940px) {
   .yt-hero-grid {
     grid-template-columns: 1fr;
