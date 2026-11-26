@@ -76,6 +76,7 @@ LINE_PREFIXES = {
     "中和新蘆線": "O",
     "環狀線": "Y",
     "紅線": "R",
+    "橘線": "O",
 }
 
 # Conservative Taiwan bounding box (covers main island + Penghu / outlying).
@@ -89,6 +90,10 @@ def is_in_taiwan(lat: float, lng: float) -> bool:
 
 
 logger = logging.getLogger(__name__)
+
+
+def subway_name(name: str) -> str:
+    return re.split(r"[(（]", name.split("-", 1)[-1])[0].strip().removesuffix("站")
 
 
 def queries_for(station: Station) -> list[str]:
@@ -107,9 +112,7 @@ def queries_for(station: Station) -> list[str]:
 
     if station.branch_code in (BRANCH_TPE_MRT, BRANCH_KHH_MRT):
         # "板南線-龍山寺站" -> "龍山寺"
-        stem = station.name.split("-", 1)[-1]
-        if stem.endswith("站"):
-            stem = stem[:-1]
+        stem = subway_name(station.name)
         if stem:
             queries.append(f"{city} 捷運{stem}站")
             queries.append(f"{city} {stem}站")
@@ -161,11 +164,13 @@ def matched_candidate(candidate: dict, station: Station) -> dict | None:
         return None
 
     if station.branch_code in (BRANCH_TPE_MRT, BRANCH_KHH_MRT):
-        expected = normalize_address(station.name.split("-", 1)[-1]).removesuffix("站")
+        expected = normalize_address(subway_name(station.name))
         name = normalize_address(str(candidate.get("name", "")))
         name = name.removeprefix("捷運").removesuffix("站")
         tags = candidate.get("extratags") or {}
         line = LINE_PREFIXES.get(station.name.split("-", 1)[0])
+        if station.branch_code == BRANCH_KHH_MRT and line == "R":
+            line = "RK?"
         if (
             name != expected
             or candidate.get("class", candidate.get("category")) != "railway"

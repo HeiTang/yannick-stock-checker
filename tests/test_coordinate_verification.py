@@ -204,3 +204,29 @@ def test_report_does_not_call_bbox_only_coordinates_verified(tmp_path, monkeypat
     assert "Candidates — not independently verified (1)" in text
     assert "Verified reference points: 0" in text
     assert "Unresolved / invalid (1)" in text
+
+
+@pytest.mark.parametrize(
+    ("name", "ref", "address"),
+    [
+        ("紅線-左營站(試營運中，12/1正式開幕)", "R16", "高雄市左營區高鐵路107號"),
+        ("橘線-鹽埕埔站（試營運中）", "O2", "高雄市鹽埕區大勇路96號"),
+        ("紅線-岡山車站(試營運中)", "RK1", "高雄市岡山區中山北路1號"),
+    ],
+)
+def test_kaohsiung_subway_ignores_launch_notes_and_accepts_line_codes(
+    name, ref, address
+):
+    station = Station("mrt", name, address, "002", "高雄捷運據點")
+    stem = name.split("-", 1)[1].split("(")[0].split("（")[0]
+    assert geo.queries_for(station)[1:] == [f"高雄市 捷運{stem}", f"高雄市 {stem}"]
+    candidate = {
+        **MATCH,
+        "name": stem,
+        "class": "railway",
+        "extratags": {"station": "subway", "ref": ref},
+        "address": {"city": "高雄市"},
+    }
+    assert geo.matched_candidate(candidate, station) is not None
+    candidate["extratags"]["ref"] = "BL03"
+    assert geo.matched_candidate(candidate, station) is None

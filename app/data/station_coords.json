@@ -804,10 +804,14 @@
   },
   "F7D4C55B1AB7DC": {
     "address": "高雄市鳳山區自由路281號1F(橘線O11/近1號出口)",
-    "lat": null,
-    "lng": null,
+    "lat": 22.62530373,
+    "lng": 120.3483428,
     "name": "橘線-鳳山西站(試營運中，12/1正式開幕)",
-    "resolved_at": null
+    "precision": "station",
+    "resolved_at": "2026-11-26",
+    "source_name": "O11 鳳山西站",
+    "source_url": "https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd",
+    "verified_at": "2026-11-26"
   },
   "F7D4C56F112E3D": {
     "address": "新北市淡水區中正路1號",
@@ -976,65 +980,101 @@
   },
   "F7D4C90F0821FB": {
     "address": "高雄市鼓山區臨海二路17-1號B1(橘線O1/近2號出口售票機旁)",
-    "lat": null,
-    "lng": null,
+    "lat": 22.62154049,
+    "lng": 120.2745284,
     "name": "橘線-哈瑪星站(試營運中，12/1正式開幕)",
-    "resolved_at": null
+    "precision": "station",
+    "resolved_at": "2026-11-26",
+    "source_name": "O1 西子灣",
+    "source_url": "https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd",
+    "verified_at": "2026-11-26"
   },
   "F7D4C90F0821FC": {
     "address": "高雄市三民區建國二路320號B3(紅線R11/穿堂層)",
-    "lat": null,
-    "lng": null,
+    "lat": 22.63966255,
+    "lng": 120.3027023,
     "name": "紅線-高雄車站(試營運中，12/1正式開幕)",
-    "resolved_at": null
+    "precision": "station",
+    "resolved_at": "2026-11-26",
+    "source_name": "R11 高雄車站",
+    "source_url": "https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd",
+    "verified_at": "2026-11-26"
   },
   "F7D4C98C0803DE": {
     "address": "高雄市前鎮區翠亨北路225號B1(紅線R5/近1號出口電話亭旁)",
-    "lat": null,
-    "lng": null,
+    "lat": 22.58853833,
+    "lng": 120.3219713,
     "name": "紅線-前鎮高中站(試營運中，12/1正式開幕)",
-    "resolved_at": null
+    "precision": "station",
+    "resolved_at": "2026-11-26",
+    "source_name": "R5 前鎮高中",
+    "source_url": "https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd",
+    "verified_at": "2026-11-26"
   },
   "F7D4C9A20492DC": {
     "address": "高雄市新興區中山一路115號B3(紅線R10/往大寮方向轉換層)",
-    "lat": null,
-    "lng": null,
+    "lat": 22.631386,
+    "lng": 120.301951,
     "name": "紅線-美麗島站(試營運中，12/1正式開幕)",
-    "resolved_at": null
+    "precision": "station",
+    "resolved_at": "2026-11-26",
+    "source_name": "R10 美麗島",
+    "source_url": "https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd",
+    "verified_at": "2026-11-26"
   },
   "F7D4CA1C0760B5": {
     "address": "高雄市前鎮區翠亨南路555號B1(紅線R4A/近1號出口)",
-    "lat": null,
-    "lng": null,
+    "lat": 22.58035095,
+    "lng": 120.3284408,
     "name": "紅線-草衙站(試營運中，12/1正式開幕)",
-    "resolved_at": null
+    "precision": "station",
+    "resolved_at": "2026-11-26",
+    "source_name": "R4A 草衙",
+    "source_url": "https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd",
+    "verified_at": "2026-11-26"
   },
   "F7D4CA3304B5A3": {
     "address": "高雄市左營區高鐵路107號B1(紅線R16/近1號出口)",
-    "lat": null,
-    "lng": null,
+    "lat": 22.68801596,
+    "lng": 120.3095473,
     "name": "紅線-左營站(試營運中，12/1正式開幕)",
-    "resolved_at": null
+    "precision": "station",
+    "resolved_at": "2026-11-26",
+    "source_name": "R16 左營",
+    "source_url": "https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd",
+    "verified_at": "2026-11-26"
   },
   "F7D4CA4F05528C": {
     "address": "高雄市苓雅區中正一路2號B1(橘線O10/近4號出口)",
-    "lat": null,
-    "lng": null,
+    "lat": 22.62508586,
+    "lng": 120.3410901,
     "name": "橘線-衛武營站(試營運中，12/1正式開幕)",
-    "resolved_at": null
+    "precision": "station",
+    "resolved_at": "2026-11-26",
+    "source_name": "O10 衛武營",
+    "source_url": "https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd",
+    "verified_at": "2026-11-26"
   },
   "F7D4CA5005B800": {
     "address": "高雄市鹽埕區大勇路96號B1(橘線O2/近3號出口)",
-    "lat": null,
-    "lng": null,
+    "lat": 22.62350135,
+    "lng": 120.2837767,
     "name": "橘線-鹽埕埔站(試營運中，12/1正式開幕)",
-    "resolved_at": null
+    "precision": "station",
+    "resolved_at": "2026-11-26",
+    "source_name": "O2 鹽埕埔",
+    "source_url": "https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd",
+    "verified_at": "2026-11-26"
   },
   "F7D4CA80066257": {
     "address": "高雄市岡山區碧紅里2鄰中山北路1號2F(紅線RK1/近2號出口通道)",
-    "lat": null,
-    "lng": null,
+    "lat": 22.7926035,
+    "lng": 120.2990592,
     "name": "紅線-岡山車站(試營運中，12/1正式開幕)",
-    "resolved_at": null
+    "precision": "station",
+    "resolved_at": "2026-11-26",
+    "source_name": "RK1 岡山車站（高捷官方地址交叉核對）",
+    "source_url": "https://www.openstreetmap.org/node/5731893016",
+    "verified_at": "2026-11-26"
   }
 }

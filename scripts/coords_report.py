@@ -52,6 +52,7 @@ def main() -> None:
         "核對的是參考地點身分，不代表室內販賣機精確位置。台灣 bbox 僅為數值防線，不是正確性證明。",
         "精度：`entrance`＝車站出入口；`station`＝站體／站中心；`store`＝門市 POI；`address`＝門牌。",
         "未指定出口時使用代表出口；南港 2A 僅有出口 2 參考，高捷使用站中心。距離是直線近似。",
+        "高捷 O1 在市府資料仍列舊名西子灣，已依[高捷站點頁](https://www.krtc.com.tw/Guide/station_map?id=71b56722a4654c95ad24e82e35754492)核對為哈瑪星；RK1 使用 OSM 捷運站體點，依[高捷官方地址](https://www.krtc.com.tw/Guide/station_info?n=RK1)核對中山北路站址。",
         "",
     ]
     for title, entries in groups.items():
