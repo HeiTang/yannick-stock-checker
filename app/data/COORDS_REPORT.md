@@ -1,13 +1,14 @@
 # Station coords report
 
-Total: **88** · ❌ Unresolved / invalid: 0 · 🔍 Candidates — not independently verified: 0 · ✅ Verified reference points: 88
+Total: **98** · ❌ Unresolved / invalid: 0 · 🔍 Candidates — not independently verified: 0 · ✅ Verified reference points: 98
 
 核對的是參考地點身分，不代表室內販賣機精確位置。台灣 bbox 僅為數值防線，不是正確性證明。
 精度：`entrance`＝車站出入口；`station`＝站體／站中心；`store`＝門市 POI；`address`＝門牌。
 未指定出口時使用代表出口；南港 2A 僅有出口 2 參考，高捷使用站中心。距離是直線近似。
+高捷 O1 在市府資料仍列舊名西子灣，已依[高捷站點頁](https://www.krtc.com.tw/Guide/station_map?id=71b56722a4654c95ad24e82e35754492)核對為哈瑪星；RK1 使用 OSM 捷運站體點，依[高捷官方地址](https://www.krtc.com.tw/Guide/station_info?n=RK1)核對中山北路站址。
 
 
-## ✅ Verified reference points (88)
+## ✅ Verified reference points (98)
 
 | TID／站點 | 地址 | 座標／地圖 | 來源參考 | 精度 | 核對日期 |
 |---|---|---|---|---|---|
@@ -68,6 +69,10 @@ Total: **88** · ❌ Unresolved / invalid: 0 · 🔍 Candidates — not independ
 | `F7D4C469168A57` 板南線-頂埔站 | 新北市土城區中央路4段51之6號B3(出口4置物櫃旁) | [24.9602553, 121.4199687](https://www.google.com/maps/search/?api=1&query=24.96025528,121.4199687) | [頂埔站出口4](https://data.taipei/api/dataset/cfa4778c-62c1-497b-b704-756231de348b/resource/307a7f61-e302-4108-a817-877ccbfca7c1/download) | entrance | 2026-09-11 |
 | `F7D4C41212D4F8` 板南線-龍山寺站 | 臺北市萬華區西園路1段153號 | [25.0354840, 121.4995300](https://www.google.com/maps/search/?api=1&query=25.035484,121.49953) | [龍山寺站出口1](https://data.taipei/api/dataset/cfa4778c-62c1-497b-b704-756231de348b/resource/307a7f61-e302-4108-a817-877ccbfca7c1/download) | entrance | 2026-09-11 |
 | `F638C5390CABA2` 桃園中正店 | 桃園市桃園區中正路50號 | [24.9910697, 121.3129895](https://www.google.com/maps/search/?api=1&query=24.9910697,121.3129895) | [330桃園市桃園區武陵里中正路50號](https://www.yannick.com.tw/yannick/storedetail?id=79800790-1db5-4cfd-8345-ebf82fb93f92) | address | 2026-09-11 |
+| `F7D4C90F0821FB` 橘線-哈瑪星站(試營運中，12/1正式開幕) | 高雄市鼓山區臨海二路17-1號B1(橘線O1/近2號出口售票機旁) | [22.6215405, 120.2745284](https://www.google.com/maps/search/?api=1&query=22.62154049,120.2745284) | [O1 西子灣](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-11-26 |
+| `F7D4CA4F05528C` 橘線-衛武營站(試營運中，12/1正式開幕) | 高雄市苓雅區中正一路2號B1(橘線O10/近4號出口) | [22.6250859, 120.3410901](https://www.google.com/maps/search/?api=1&query=22.62508586,120.3410901) | [O10 衛武營](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-11-26 |
+| `F7D4C55B1AB7DC` 橘線-鳳山西站(試營運中，12/1正式開幕) | 高雄市鳳山區自由路281號1F(橘線O11/近1號出口) | [22.6253037, 120.3483428](https://www.google.com/maps/search/?api=1&query=22.62530373,120.3483428) | [O11 鳳山西站](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-11-26 |
+| `F7D4CA5005B800` 橘線-鹽埕埔站(試營運中，12/1正式開幕) | 高雄市鹽埕區大勇路96號B1(橘線O2/近3號出口) | [22.6235014, 120.2837767](https://www.google.com/maps/search/?api=1&query=22.62350135,120.2837767) | [O2 鹽埕埔](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-11-26 |
 | `F638C39405D3A4` 淡水信義線-中山站 | 103014臺北市大同區南京西路16號 | [25.0524140, 121.5203030](https://www.google.com/maps/search/?api=1&query=25.052414,121.520303) | [中山站出口1](https://data.taipei/api/dataset/cfa4778c-62c1-497b-b704-756231de348b/resource/307a7f61-e302-4108-a817-877ccbfca7c1/download) | entrance | 2026-09-11 |
 | `F7D4C4A21670E1` 淡水信義線-信義安和站 | 臺北市大安區信義路4段212之1號B1(出口1) | [25.0333770, 121.5526020](https://www.google.com/maps/search/?api=1&query=25.033377,121.552602) | [信義安和站出口1](https://data.taipei/api/dataset/cfa4778c-62c1-497b-b704-756231de348b/resource/307a7f61-e302-4108-a817-877ccbfca7c1/download) | entrance | 2026-09-11 |
 | `F7D4C3D7144228` 淡水信義線-劍潭站 | 臺北市士林區中山北路5段65號(出口1) | [25.0850300, 121.5251750](https://www.google.com/maps/search/?api=1&query=25.08503,121.525175) | [劍潭站出口1](https://data.taipei/api/dataset/cfa4778c-62c1-497b-b704-756231de348b/resource/307a7f61-e302-4108-a817-877ccbfca7c1/download) | entrance | 2026-09-11 |
@@ -92,10 +97,16 @@ Total: **88** · ❌ Unresolved / invalid: 0 · 🔍 Candidates — not independ
 | `F7D4C5391249AF` 紅線-中央公園站 | 高雄市前金區中山一路11號B1(紅線R9/穿堂層 往2號出口) | [22.6245709, 120.3006424](https://www.google.com/maps/search/?api=1&query=22.6245709,120.3006424) | [R9 中央公園](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-09-11 |
 | `F7D4C55712A1FA` 紅線-凱旋站 | 高雄市前鎮區中山三路1號B1(紅線R6/近1號出入口廁所旁) | [22.5968391, 120.3151478](https://www.google.com/maps/search/?api=1&query=22.59683914,120.3151478) | [R6 凱旋](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-09-11 |
 | `F7D4C59D12B5D6` 紅線-凹子底站 | 高雄市鼓山區博愛二路21號B1(紅線R13/近3號出入口) | [22.6571882, 120.3030886](https://www.google.com/maps/search/?api=1&query=22.65718817,120.3030886) | [R13 凹子底](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-09-11 |
+| `F7D4C98C0803DE` 紅線-前鎮高中站(試營運中，12/1正式開幕) | 高雄市前鎮區翠亨北路225號B1(紅線R5/近1號出口電話亭旁) | [22.5885383, 120.3219713](https://www.google.com/maps/search/?api=1&query=22.58853833,120.3219713) | [R5 前鎮高中](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-11-26 |
 | `F7D4C3C81216B3` 紅線-小港站 | 高雄市小港區沿海一路280號B1(紅線R3/近3號出入口) | [22.5648119, 120.3538521](https://www.google.com/maps/search/?api=1&query=22.56481191,120.3538521) | [R3 小港](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-09-11 |
+| `F7D4CA80066257` 紅線-岡山車站(試營運中，12/1正式開幕) | 高雄市岡山區碧紅里2鄰中山北路1號2F(紅線RK1/近2號出口通道) | [22.7926035, 120.2990592](https://www.google.com/maps/search/?api=1&query=22.7926035,120.2990592) | [RK1 岡山車站（高捷官方地址交叉核對）](https://www.openstreetmap.org/node/5731893016) | station | 2026-11-26 |
+| `F7D4CA3304B5A3` 紅線-左營站(試營運中，12/1正式開幕) | 高雄市左營區高鐵路107號B1(紅線R16/近1號出口) | [22.6880160, 120.3095473](https://www.google.com/maps/search/?api=1&query=22.68801596,120.3095473) | [R16 左營](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-11-26 |
 | `F7D4C3B4116D82` 紅線-巨蛋站 | 高雄市左營區博愛二路485號B1(紅線R14/穿堂走道靠近1號出入口) | [22.6665739, 120.3028955](https://www.google.com/maps/search/?api=1&query=22.66657386,120.3028955) | [R14 巨蛋](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-09-11 |
 | `F7D4C5391249AE` 紅線-後驛站 | 高雄市三民區博愛一路220號B1(紅線R12/近2號出入口) | [22.6482969, 120.3033675](https://www.google.com/maps/search/?api=1&query=22.64829692,120.3033675) | [R12 後驛](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-09-11 |
 | `F7D4C52312B459` 紅線-楠梓科技園區站 | 高雄市楠梓區加昌路598號(紅線R19/穿堂走道靠近1號出入口) | [22.7186389, 120.3072728](https://www.google.com/maps/search/?api=1&query=22.71863888,120.3072728) | [R19 楠梓加工區](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-09-11 |
 | `F7D4C492120254` 紅線-獅甲站 | 高雄市前鎮區中山三路150號B1(紅線R7/近3號出入口) | [22.6058328, 120.3077020](https://www.google.com/maps/search/?api=1&query=22.60583276,120.307702) | [R7 獅甲](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-09-11 |
 | `F7D4C59D12B5D7` 紅線-生態園區站 | 高雄市左營區博愛三路435號B1(紅線R15/穿堂走道靠近1號出入口) | [22.6768103, 120.3066935](https://www.google.com/maps/search/?api=1&query=22.67681026,120.3066935) | [R15 生態園區](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-09-11 |
+| `F7D4C9A20492DC` 紅線-美麗島站(試營運中，12/1正式開幕) | 高雄市新興區中山一路115號B3(紅線R10/往大寮方向轉換層) | [22.6313860, 120.3019510](https://www.google.com/maps/search/?api=1&query=22.631386,120.301951) | [R10 美麗島](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-11-26 |
+| `F7D4CA1C0760B5` 紅線-草衙站(試營運中，12/1正式開幕) | 高雄市前鎮區翠亨南路555號B1(紅線R4A/近1號出口) | [22.5803509, 120.3284408](https://www.google.com/maps/search/?api=1&query=22.58035095,120.3284408) | [R4A 草衙](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-11-26 |
+| `F7D4C90F0821FC` 紅線-高雄車站(試營運中，12/1正式開幕) | 高雄市三民區建國二路320號B3(紅線R11/穿堂層) | [22.6396626, 120.3027023](https://www.google.com/maps/search/?api=1&query=22.63966255,120.3027023) | [R11 高雄車站](https://openapi.kcg.gov.tw/Api/Service/Get/4278fc6a-c3ea-4192-8ce0-40f00cdb40dd) | station | 2026-11-26 |
 | `F7D4C45716F94E` 高雄苓雅店 | 高雄市苓雅區青年二路89號 | [22.6186911, 120.2987111](https://www.google.com/maps/search/?api=1&query=22.6186911,120.2987111) | [802, Kaohsiung City, Lingya District, Qingnian 2nd Rd, 89號亞尼克-高雄苓雅店](https://www.yannick.com.tw/yannick/storedetail?id=e2ced3d2-706b-46ff-9fec-c4df0f1f0681) | store | 2026-09-11 |
